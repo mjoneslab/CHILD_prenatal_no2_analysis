@@ -1,0 +1,251 @@
+---
+title: "CHILD PM2.5 birth linear model sensitivity analysis"
+author: "SL"
+date: "18/11/2020"
+output: html_document
+---
+
+*Purpose*: To assess whether or not birth month should be included in linear models. 
+
+Load required libraries.
+```{r libraries}
+library(tidyverse)
+library(limma)
+library(modelr)
+library(broom)
+library(here)
+```
+
+Load covariate data
+```{r covariates}
+load(file=here("output_data", "covariates", "2020-11-12_CHILD_covariates_na_with_means.Rdata"))
+```
+
+
+Load DNAm data and pdata. Subset out cord blood samples.
+```{r pdata}
+load(file=here("output_data", "preprocessed_data", "2020-11_10_CHILD_preprocessed_mvals_pdata_annotation.Rdata"))
+
+#check ranges to confirm DNAm data is in m-value format
+dim(mval_batchcorr)
+max(mval_batchcorr)
+min(mval_batchcorr)
+
+#subset pData into CBMCs (cord blood)
+#these children have data at both time points
+cb_pdata <- subset(pdata_nodups, Tissue == "C")
+dim(cb_pdata)
+
+#subset cordblood DNAM samples
+cb_mval_batchcorr <- mval_batchcorr[ ,colnames(mval_batchcorr) %in% rownames(cb_pdata)]
+
+#check size for correct sample num
+dim(cb_mval_batchcorr) #144
+
+#convert mvals to beta values 
+#beta values will be used in linear regression because of substraction used on year one data (which has to be done on beta values). using the same format will make the data more comparable.
+cb_beta_batchcorr <- lumi::m2beta(cb_mval_batchcorr)
+min(cb_beta_batchcorr)
+max(cb_beta_batchcorr)
+
+#rename colnames of beta values to sample label
+#create new column in pdata
+cb_pdata$sentrix_name <- paste(cb_pdata$Sentrix_ID, cb_pdata$Sentrix_Position, sep="_")
+identical(colnames(cb_beta_batchcorr), cb_pdata$sentrix_name)#true
+colnames(cb_beta_batchcorr) <- cb_pdata$Sample_Label
+```
+
+Subset covariates for individuals with cord blood DNAm.
+```{r sub_covariates}
+covariates_sub <- covariates_nameans[as.character(covariates_nameans$sampleid) %in% colnames(cb_beta_batchcorr), ]
+
+#check if they are in the same order
+identical(as.character(covariates_sub$sampleid), colnames(cb_beta_batchcorr)) #true
+```
+
+
+Load CBMC PCs.
+```{r load_PC_correctedbetas}
+load(here("output_data", "deconvolution", "2020-11-10_CBMC_PCs.Rdata"))
+
+dim(cb_pcs) #144 6
+
+#rename columns for clarity
+colnames(cb_pcs) <- paste("cbmc.", colnames(cb_pcs), sep="")
+```
+
+
+Load genotyping PCs and subset out REEGLE PCs (genotyping data contains PCs for a few thousand participants).
+```{r genotypingPCS}
+genotyping <- read.csv("R:/Jones/People/Samantha Lee/Computational/CHILD/input_data/CHILD_subjects_Qced_first10PCS_Duan.csv")
+
+#make rownames sample names then rmove this row
+rownames(genotyping) <- genotyping$FID
+genotyping <- subset(genotyping, select=-c(FID, IID))
+
+genosub <- genotyping[rownames(genotyping) %in% cb_pdata$Sample_Label,]
+#missing genotyping data for 14 REEGLE children?
+
+#rename columns of genotyping data for clarity
+colnames(genosub) <- paste("genotyping.", colnames(genosub), sep="")
+```
+
+
+Check that betas, pdata, covariates, cell type PCs are in same order.
+```{r cb_batchcorr_order}
+#check that pdata and betas are in correct order
+identical(as.character(cb_pdata$Sample_Label), colnames(cb_beta_batchcorr)) #true
+
+#check that pdata and covariates are in the same order
+identical(as.character(cb_pdata$Sample_Label), as.character(covariates_sub$sampleid)) #true
+
+#check that pdata and cell type pcs are in same order
+identical(rownames(cb_pdata), rownames(cb_pcs)) #true
+```
+
+
+Add cell type PCs to covariate data
+```{r combine_cell_pcs_covariates}
+covariates_ctpcs <- cbind(covariates_sub, cb_pcs)
+```
+
+
+Subset covariates, pdata, and betas for individuals that have genotyping data. Add genotyping pcs to covariates
+```{r sub_on_geno}
+#subset covariates
+covariates_ctpcs_sub <- covariates_ctpcs[covariates_ctpcs$sampleid %in% rownames(genosub), ]
+dim(covariates_ctpcs_sub) #131
+
+#check that covariates and geno are in same order
+identical(as.character(covariates_ctpcs_sub$sampleid), rownames(genosub)) #false
+
+#put genosub rows in numerical order
+genosub_order <- genosub[order(rownames(genosub)), ]
+
+#check that covariates and geno are in same order
+identical(as.character(covariates_ctpcs_sub$sampleid), rownames(genosub_order)) #true
+
+#combine genosub with covariates
+covariates_ctpcs_geno <- cbind(covariates_ctpcs_sub, genosub_order)
+
+#subet betas for genotyping data
+cb_beta_batchcorr_geno <- cb_beta_batchcorr[,colnames(cb_beta_batchcorr) %in% rownames(genosub_order)] 
+dim(cb_beta_batchcorr_geno) #131
+
+#check that this is in the same order as covariates
+identical(as.character(covariates_ctpcs_geno$sampleid), colnames(cb_beta_batchcorr_geno)) #true
+
+#subset pdata
+cb_pdata_geno <- cb_pdata[as.character(cb_pdata$Sample_Label) %in% rownames(genosub_order), ]
+dim(cb_pdata_geno) #131 16
+
+#check that covariates and dpata are in same order
+identical(as.character(cb_pdata_geno$Sample_Label), as.character(covariates_ctpcs_geno$sampleid)) #true
+```
+
+Subset beta values for complete cases.
+```{r beta_cc}
+#further subset covariates and beta values for complete cases
+#subset covariates
+covariates_ctpcs_geno_cc <- 
+  covariates_ctpcs_geno[complete.cases(covariates_ctpcs_geno %>% 
+                                         dplyr::select(PM25DALbYY_01, sex, birth_month,
+                                                       gestational_days, 
+                                                       maternal_smoking_18wk, 
+                                                       maternal_education_length,
+                                                       pss_18wk, 
+                                                       cbmc.PC1, cbmc.PC2,
+                                                       cbmc.PC3, cbmc.PC4,cbmc.PC5,
+                                                       genotyping.PC1, genotyping.PC2,
+                                                       genotyping.PC3)), ] 
+#check size
+dim(covariates_ctpcs_geno_cc) #116
+
+#subset betas
+cb_beta_batchcorr_geno_cc <- cb_beta_batchcorr_geno[,colnames(cb_beta_batchcorr_geno) %in% covariates_ctpcs_geno_cc$sampleid]
+#check size
+dim(cb_beta_batchcorr_geno_cc) #101
+```
+
+
+Limma contains its own function to assess model fit using AIC/BIC called "selectModel". This function allows comparison of different model matrices to determine the best model for each probe. As this is the simplest way to compare models using currently implemented code, start with this.
+```{r limma_aicbic}
+#create design matrix for all covariates
+design_all <- model.matrix(~PM25DALbYY_01 + sex + birth_month + gestational_days +
+                            maternal_smoking_18wk + 
+                            maternal_education_length +
+                            pss_18wk + 
+                            cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + 
+                            cbmc.PC4 + cbmc.PC5 + genotyping.PC1 + genotyping.PC2 +
+                            genotyping.PC3,
+                          data=covariates_ctpcs_geno)
+
+#check size
+dim(design_all) #101
+
+
+#create model matrix that excludes birth month
+design_nobm <- model.matrix(~PM25DALbYY_01 + sex +  gestational_days +
+                            maternal_smoking_18wk + 
+                            maternal_education_length +
+                            pss_18wk + 
+                            cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + 
+                            cbmc.PC4 + cbmc.PC5 + genotyping.PC1 + genotyping.PC2 +
+                            genotyping.PC3,
+                          data=covariates_ctpcs_geno)
+
+#check size
+dim(design_nobm) #101
+
+#compare the two model matrices using limma's selectModel function
+
+#AIC is better in situations when a false negative finding would be considered more misleading than a false positive
+modelfit_aic <- selectModel(cb_beta_batchcorr_geno_cc, 
+                        designlist = list(design_all, design_nobm),
+                        criterion = "aic")
+
+#what model is preferred at most probes
+table(modelfit_aic$pref) #the model without birth month is preferred
+
+
+#BIC is better in situations where a false positive is as misleading as, or more misleading than, a false negative
+#BIC is more appropriate for this study
+modelfit_bic <- selectModel(cb_beta_batchcorr_geno_cc, 
+                        designlist = list(design_all, design_nobm),
+                        criterion = "bic")
+
+#what model is preferred at most probes
+table(modelfit_bic$pref) #the model without birth month is STRONGLY preferred
+```
+
+Rerun model without birth month.
+```{r no_bm}
+
+#fit methylation to no2
+cb_fit <-  lmFit(cb_beta_batchcorr_geno_cc, design_nobm)
+cb_ebayes <- eBayes(cb_fit)
+
+#add annotation to cb_ebayes
+cb_ebayes$annotation <- annotation[rownames(annotation) %in% rownames(cb_ebayes),]
+
+#pull out pval, coefficients and annotation
+cb_pvals <- cbind(as.data.frame(cb_ebayes$p.value), 
+                  as.data.frame(cb_ebayes$coefficients),
+                  as.data.frame(cb_ebayes$annotation))
+
+#rename columns to indicate pvalues vs coeffcients 
+colnames(cb_pvals) <- c(paste("pval", colnames(cb_pvals)[1:15], sep = "_"), 
+                         paste("coeff", colnames(cb_pvals)[16:30], sep = "_"),
+                         colnames(cb_pvals)[31:63])
+
+cb_pvals$pval_PM25DALbYY_01_adj <- p.adjust(cb_pvals$pval_PM25DALbYY_01, method="BH")
+
+#histogram
+ggplot( data = cb_pvals, aes(x=pval_PM25DALbYY_01)) +
+  geom_histogram(bins=100, fill = "#75A2D9") +
+  labs(y="Count", x="Unadjusted p-value") +
+  theme_bw() +
+  theme(panel.border = element_blank(),
+        axis.text=element_text(size=18),
+        axis.title=element_text(size=20)) 
+```

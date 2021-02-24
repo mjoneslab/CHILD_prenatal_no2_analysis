@@ -1,0 +1,485 @@
+---
+title: "Age one peripheral blood cell type correciton"
+author: "SL"
+date: "January 5, 2021"
+output: html_document
+---
+
+*IMPORTANT*: This code is for cell type correction before linear models for EWAS. The other option is to include cell type proportions in EWAS linear models. As CHILD is a relatively small cohort (and we lose many participants to missing data), correcting for cell type before linear models can improve power to detect DNAm changes. When cohorts are larger (and better powered), it is more correct to include cell types (or cell type PCs) in final linear model. 
+
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+library(tidyverse)
+library(minfi)
+library(here)
+library(pbapply)
+```
+
+Load preprocessed CHILD data.  
+```{r load_CHILD_data, message=FALSE, warning=FALSE}
+load(here("output_data", "preprocessed_data", "2020-11_19_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
+```
+
+Load deconvolution data.
+```{r load_CHILD_data, message=FALSE, warning=FALSE}
+load("R:/Jones/People/Samantha Lee/Projects/CHILD/CHILD_air_pollution/output_data/deconvolution/2021-01-07_CBMC_PBMC_deconvolution.Rdata")
+
+#remove probe info as it's not needed at this time
+rm(cb_allprobes, cb_deconvolutionprobes,
+   y1_allprobes, y1_deconvolutionprobes)
+```
+
+
+## Dataa prepartion for cell type correction 
+
+
+Subset out age one and cord blood pData. Then subset for samples that have data available at both time points. 
+```{r sub_pdata}
+cb_pdata <- subset(pdata_nodups, Tissue == "C")
+dim(cb_pdata) # 144  17
+
+#subset out age one pdata
+y1_pdata <- subset(pdata_nodups, Tissue == "P")
+dim(y1_pdata) #145  17
+
+#year one data has one individual that is missing birth data
+#remove this individual
+y1_pdata_sub <- y1_pdata[y1_pdata$Sample_Label %in% cb_pdata$Sample_Label, ]
+dim(y1_pdata_sub) # 144  17
+```
+
+Subset out cord blood betas and year one betas. Then subset year one data for individuals that have DNAm measured at both time points. 
+```{r subset_blood_betas}
+
+#subset pData into CBMCs (cord blood)
+#these children have data at both time points
+cb_betas <- betas[,colnames(betas) %in% rownames(cb_pdata)]
+#check size of cord blood data
+dim(cb_betas) # 424644    144
+min(cb_betas) # 0.002973941
+max(cb_betas) # 0.9980669
+
+#check if cord blood DNAm samples are in same order in cord blood pdata
+identical(colnames(cb_betas), rownames(cb_pdata)) #true
+#rename columns of cb_betas
+colnames(cb_betas) <- cb_pdata$Sample_Label
+
+
+#subset out cordblood samples from beta matrix
+y1_betas <- betas[,colnames(betas) %in% rownames(y1_pdata_sub)]
+#check size of year one data
+dim(y1_betas) # 424644    144
+min(y1_betas) #0.002650193
+max(y1_betas) #0.9983506
+
+#check if cord blood DNAm samples are in same order in cord blood pdata
+identical(colnames(y1_betas), rownames(y1_pdata_sub)) #true
+#rename columns of cb_betas
+colnames(y1_betas) <- y1_pdata_sub$Sample_Label
+
+#check if cord blood samples and year one samples are in same order
+identical(colnames(cb_betas), colnames(y1_betas))
+```
+
+
+
+Subtract batch corrected cord blood DNAm data from batch corrrected year one DNAm data. 
+```{r diff_betas}
+#check if cord blood samples and year one samples are in same order
+identical(colnames(cb_betas), colnames(y1_betas))
+
+#subtract cord blood DNAm from year one DNAm ("difference betas")
+diff_betas <- y1_betas - cb_betas
+#check size of difference betas
+dim(diff_betas) # 424644    144
+min(diff_betas) # -0.9793121 
+max(diff_betas) # 0.9797916
+```
+
+
+## Principle component (PC) generation 
+
+Remove duplicates from cord blood deconvolution data then rename rows with pdata sample label.
+```{r remove_dups_cb_cellcounts}
+#convert deconvolution data to dataframe
+child_fscbc_ecc2_cb_df <- as.data.frame(child_fscbc_ecc2_cb$counts)
+#check size
+dim(child_fscbc_ecc2_cb_df) # 153 6
+
+#make list of samples to remove from beta and pData
+dups_rm <-c("9298768102_R06C01", "9341679111_R05C02", "9298768023_R03C02",
+            "9341679076_R06C02", "9297962089_R06C02", "9298768023_R02C02",
+            "9341679097_R02C02", "9341679114_R01C02", "9298768023_R06C01")
+
+#remove replicates from cell type estimates                      
+child_fscbc_ecc2_cb_df_nodups <-
+  child_fscbc_ecc2_cb_df[!rownames(child_fscbc_ecc2_cb_df) %in% dups_rm, ]
+
+#check that 9 samples were removed
+dim(child_fscbc_ecc2_cb_df_nodups) # 144   6
+
+
+#check if cord blood cell counts are in the same order as pdata
+identical(rownames(child_fscbc_ecc2_cb_df_nodups), rownames(cb_pdata)) #true
+#rename rows of cord blood cell counts to sample label
+rownames(child_fscbc_ecc2_cb_df_nodups) <- cb_pdata$Sample_Label
+
+
+#rename cord blood cell counts columns
+colnames(child_fscbc_ecc2_cb_df_nodups) <- paste("cb", colnames(child_fscbc_ecc2_cb_df_nodups), sep=".")
+```
+
+Convert age one cell counts to data frame and rename rows to pdata sample label.
+```{r ageone_cellcounts}
+#convert to dataframe
+child_fscbc_ecc2_y1_df <- as.data.frame(child_fscbc_ecc2_y1)
+#check size
+dim(child_fscbc_ecc2_y1_df) # 145 5
+
+#subset for samples that have data at both time points
+child_fscbc_ecc2_y1_df_sub <- 
+  child_fscbc_ecc2_y1_df[rownames(child_fscbc_ecc2_y1_df) %in% rownames(y1_pdata_sub), ]
+#check size
+dim(child_fscbc_ecc2_y1_df_sub) # 144 5
+
+
+#check if year one cell counts are in the same order as pdata
+identical(rownames(child_fscbc_ecc2_y1_df_sub), rownames(y1_pdata_sub)) #true
+#rename rows of cord blood cell counts to sample label
+rownames(child_fscbc_ecc2_y1_df_sub) <- y1_pdata_sub$Sample_Label
+
+
+#rename year one cell counts columns
+colnames(child_fscbc_ecc2_y1_df_sub) <- paste("y1", 
+                                              substr(colnames(child_fscbc_ecc2_y1_df_sub), 8, 13), 
+                                              sep=".")
+```
+
+Combine cord blood and year one cell counts into one data frame.
+```{r combined_cellcounts}
+#check that cord blood and year one cell counts are in the same order
+identical(rownames(child_fscbc_ecc2_cb_df_nodups), rownames(child_fscbc_ecc2_y1_df_sub)) #true
+
+#combine cell counts (ccc)
+ccc <- cbind(child_fscbc_ecc2_cb_df_nodups, child_fscbc_ecc2_y1_df_sub)
+dim(ccc) # 144 11
+head(ccc)
+```
+
+
+
+## Cell type correction
+
+Correct age one peripheral blood for cell type using linear regression. 
+
+Based on "Adjusting for cell type composition in DNA methylation data using a regression-based approach" by Jones et al (2017).  
+
+The data is composite data and cell types are not independent of one another:  
+
+Two ways of dealing with this:  
+
+1. Do a PCA  
+* variables are not independent -PCA will give all the same data but in independent vectors  
+* But cant do PCA on composite data - this is composite data  
+* Do a centred log ratio before PCA to get around this  
+*Dont do CLR in this case as data do not add to 100*
+
+2. Leave out one cell type  
+* More simple way  
+* Usually leave cell type that is largest proportion  
+* For whole blood/cord blood - drop granulocytes  
+* For PMBCs and CBMCs - drop CD4T cells  
+
+
+Principle component analysis of combined cell counts.
+```{r pca}
+#pca
+ccc_pca <- prcomp(ccc, scale. = TRUE)
+
+#scree plot
+factoextra::fviz_eig(ccc_pca, ncp=15) # take first 9 PCs
+
+#convert to dataframe
+ccc_pcs <- as.data.frame(ccc_pca$x)
+
+#examine grouping of pcs
+GGally::ggpairs(ccc_pcs, columns=1:11, progress=FALSE) 
+```
+
+
+Cell type correction using principle components.
+```{r cell_type_correction}
+#fit a linear model for each probe in the matrix using cell type PCs as covariates
+diff_betas_design <- model.matrix(~ PC1  + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9, 
+                              data=ccc_pcs)
+
+#fit methylation to batch variables then get residuals
+diff_betas_fit <-  lmFit(diff_betas, diff_betas_design)
+
+#get residuals 
+diff_betas_residuals <- residuals(diff_betas_fit, diff_betas) 
+
+#check if colnames of cordblood residuals and cord blood batch corrected betas are the same
+identical(colnames(diff_betas_residuals), colnames(diff_betas))
+
+#add residuals of each regression model to the mean methyaltion value of each probe (mean across samples)
+#this gives the "corrected" methylation data
+adj_diff_betas <- diff_betas_residuals + matrix(apply(diff_betas, 1, mean), 
+                                     nrow=nrow(diff_betas_residuals), 
+                                     ncol=ncol(diff_betas_residuals))
+
+
+#check how unadjusted and adjusted betas compares
+#batch corrected
+print(diff_betas[1:5,1:5])
+#cell type PC adjusted
+print(adj_diff_betas[1:5,1:5])
+```
+
+
+Adjust beta values so that values >1 or <0 are now equal to largest number below 1 and smallest number below 0, respectively. 
+```{r adjust_beta_range}
+#check that adjusted betas do not fall below 0 or above 1
+max(adj_diff_betas) #1.050283
+min(adj_diff_betas) # -1.058378
+
+# diff betas contains values less than 0 and greater than 1 
+# These need to be fixed because they result in NAs during conversion to M values
+# Replace values higher than 1 with the largest number closest to 1
+# Replace values lower than 0 with the lowest non-negative number
+adj_diff_betas[adj_diff_betas > 1] <- max(adj_diff_betas[adj_diff_betas < 1])
+adj_diff_betas[adj_diff_betas < 0] <- min(adj_diff_betas[adj_diff_betas > 0])
+
+#check that adjusted betas do not fall below 0 or above 1
+max(adj_diff_betas) # 0.9849694
+min(adj_diff_betas) # 2.335776e-10
+```
+
+
+Convert cell type corrected beta values back to m-values for further statistical analysis.  
+```{r beta2m}
+#convert beta values to m values
+adj_diff_mvals <- lumi::beta2m(adj_diff_betas)
+
+#check max/min of mvals
+max(adj_diff_mvals) #6.034107
+min(adj_diff_mvals) #-31.99538
+```
+
+
+Set up heat scree plot function
+```{r heat_plot}
+#initialize the heatplot function 
+#outputs heatmap of PCs
+heat_scree_plot <- function(Loadings, Importance, Num, Order){
+
+  ######### adjust according to importance of first PC #########
+  adjust <- 1-Importance[1]
+  pca_adjusted <- Importance[2:length(Importance)]/adjust
+  pca_df <- data.frame(adjusted_variance = pca_adjusted, 
+                      PC = seq(1:length(pca_adjusted)))
+  
+  ######### Scree plot #########
+  
+  #plot variance that each adjusted PC accounts for 
+  scree <- ggplot(pca_df[which(pca_df$PC<=Num),],aes(PC,adjusted_variance)) + 
+    geom_bar(stat = "identity",color="black",fill="grey") +
+    theme_bw()+
+    theme(axis.text = element_text(size =12),
+          axis.title = element_text(size =15),
+          plot.margin=unit(c(1,1.5,0.2,2.25),"cm"))+ylab("Variance") +
+    scale_x_continuous(breaks = seq(1,Num,1))
+  
+  ######### Heat map of variance in each variable explained by PCs ######### 
+  
+  #correlate metadata (variables) with PCS
+  #Run anova of each PC on each meta data variable
+  
+  ### Categorical variables ###
+  
+  #Run ANOVA on each PC
+  aov_PC_meta <- lapply(1:ncol(meta_categorical), 
+                        function(covar) sapply(1:ncol(Loadings), 
+                        function(PC) summary(aov(Loadings[,PC]~
+                                                 meta_categorical[,covar]))[[1]]$"Pr(>F)"[1]))
+  
+  #set names according to names of categorical variables
+  names(aov_PC_meta) <- colnames(meta_categorical)
+  #create matrix from list
+  aov_PC_meta <- do.call(rbind, aov_PC_meta)
+  
+  
+  ### Continuous variables ### 
+  
+  #Conduct spearman correlation 
+  cor_PC_meta <- lapply(1:ncol(meta_continuous), 
+                        function(covar) sapply(1:ncol(Loadings), 
+                        function(PC) (cor.test(Loadings[,PC],
+                                               as.numeric(meta_continuous[,covar]),
+                                               alternative = "two.sided", method="spearman",
+                                               na.action=na.omit, exact=FALSE)$p.value)))
+  
+  #rename according to names of continuous variables
+  names(cor_PC_meta)<-colnames(meta_continuous)
+  #create matrix from list
+  cor_PC_meta<-do.call(rbind, cor_PC_meta)
+  
+  
+  ### Prepare continous and categorical data for heat map ###
+  
+  #combine as df
+  allvar_PC <- as.data.frame(rbind(aov_PC_meta, cor_PC_meta))
+  
+  #omit first pc to adjust
+  allvar_PC_adjust <- allvar_PC[,2:ncol(allvar_PC)]
+  
+  ### Clean all variable PCs for plotting ###
+  
+  #plot number of PCs specified by user 
+  #reduces number of columns to be equal to "num"
+  plotting_PCs <- allvar_PC_adjust[,1:Num]
+  
+  #convert plotting PCs to numeric
+  plotting_PCs_num <- apply(plotting_PCs,2, as.numeric)
+  
+  #convert plotting PCs to dataframe
+  plotting_PCs_num <- as.data.frame(plotting_PCs_num)
+  
+  #Rename columna to PC 1, 2, 3, etc...
+  colnames(plotting_PCs_num) <- sapply(1:Num, function(x) paste("PC",x, sep=""))
+  
+  #Rename rownames accordiong to variable names (metadata)
+  plotting_PCs_num$meta <- rownames(plotting_PCs[1:nrow(plotting_PCs),])
+  
+  #Melt dataframe to long format for plotting
+  plotting_PCs_melt <- reshape2::melt(plotting_PCs_num, id.vars="meta")
+  
+  #Cluster metadata according to order specified by user
+  ord <- Order
+  plotting_PCs_order <- unique(plotting_PCs_melt$meta)[rev(ord)]
+  plotting_PCs_melt$meta <- factor(plotting_PCs_melt$meta, levels = plotting_PCs_order)
+  
+  #hard code colours for heat map into dataframe according to PC significance
+  plotting_PCs_melt$Pvalue<-sapply(1:nrow(plotting_PCs_melt), function(x)
+    if(plotting_PCs_melt$value[x]<=0.001){"<=0.001"}else{
+      if(plotting_PCs_melt$value[x]<=0.01){"<=0.01"}else{
+        if(plotting_PCs_melt$value[x]<=0.05){"<=0.05"}else{">0.05"}}})
+  
+  heat <- ggplot(plotting_PCs_melt, aes(variable, meta, fill = Pvalue)) +
+    geom_tile(color = "black",size=0.5) +
+    theme_gray(8) + 
+    scale_fill_manual(breaks = c("<=0.001", "<=0.01", "<=0.05", ">0.05"),
+                        values=c("#084594","#4292c6","#9ecae1","#ffffff")) + 
+    theme(axis.text = element_text(size =10, color="black"),
+          axis.text.x = element_text(),
+          axis.title = element_text(size =15),
+          legend.text = element_text(size =14),
+          legend.title = element_text(size =12),
+          legend.position = "bottom",
+          plot.margin=unit(c(0,2.25,1,1),"cm"))+
+    xlab("Principal Component")+ylab(NULL)
+  
+  cowplot::plot_grid(scree, heat, ncol=1)
+}
+
+```
+
+```{r model_matrix_cordblood}
+#change categorical variables to factors
+y1_pdata_sub$Chip <- as.factor(y1_pdata_sub$Sentrix_ID)
+y1_pdata_sub$Run <- as.factor(y1_pdata_sub$Run)
+#pull out row from sentrix position then set to factor
+y1_pdata_sub$Row <- as.numeric(as.factor(substr(y1_pdata_sub$Sentrix_Position, 1, 3)))
+y1_pdata_sub$Sex <- as.factor(y1_pdata_sub$Sex)
+y1_pdata_sub$Group <- as.factor(y1_pdata_sub$Group)
+y1_pdata_sub$Atopy <- as.factor(y1_pdata_sub$Atopy)
+y1_pdata_sub$Wheeze <- as.factor(y1_pdata_sub$Wheeze)
+
+#add birth batch variables to y1 pdata
+y1_pdata_sub$Chip_cb <- as.factor(cb_pdata$Sentrix_ID)
+y1_pdata_sub$Run_cb <- as.factor(cb_pdata$Run)
+y1_pdata_sub$Row_cb <- as.numeric(as.factor(substr(cb_pdata$Sentrix_Position, 1, 3)))
+
+#check to see if samples are in same order between pData and and betas
+identical(as.character(y1_pdata_sub$Sample_Label), rownames(ccc)) #True
+#bind columns together for one large metadata frame
+y1_pdata_sub <- cbind(y1_pdata_sub, ccc)
+
+
+#create a model matrix using pData
+#this generates intercepts only since we are not adding in covariates
+mod = model.matrix(~1, data=y1_pdata_sub)
+```
+
+PCs before cell type correction
+```{r heatscree_before_correction}
+#convert unadjusted betas to mvals for pc heat scree
+y1_mvals <- lumi::beta2m(diff_betas)
+
+#heat scree
+uncor.dat <- t(scale(t(y1_mvals)))
+PCA_full<-princomp(na.omit(uncor.dat))
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance<-vars/sum(vars)
+
+
+#Specify which covariates are categorical and/or continuous
+meta_categorical <- y1_pdata[,c("Sex", "Group")] 
+meta_continuous <- y1_pdata[,c("NK", "Bcell", "Mono", "CD8T")]
+
+# Specify the number of PCs you want shown 
+# pick enough to view most of the variance
+Num<-10
+
+# Designate what order you want the variables to appear (continuous variables rbinded to categorical variables in function)
+Order<-c(1:10)
+
+#Apply function on PCA results of uncorrected data, pulls in the meta data and beta values from above
+heat_scree_plot(Loadings, Importance, Num, Order)
+```
+
+
+
+PCs after cell type PC correction
+```{r heatscree_after_correction}
+uncor.dat <- t(scale(t(adj_y1_mvals)))
+PCA_full<-princomp(na.omit(uncor.dat))
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance <-vars/sum(vars)
+
+#Specify which covariates are categorical and/or continuous
+meta_categorical <- y1_pdata[,c("Sex", "Group")] 
+meta_continuous <- y1_pdata[,c("NK", "Bcell", "Mono", "CD8T")]
+
+# Specify the number of PCs you want shown 
+# pick enough to view most of the variance
+Num<-10
+
+# Designate what order you want the variables to appear (continuous variables rbinded to categorical variables in function)
+Order<-c(1:7)
+
+#Apply function on PCA results of uncorrected data, pulls in the meta data and beta values from above
+heat_scree_plot(Loadings, Importance, Num, Order)
+```
+
+
+
+Save adjusted cord blood beta matrix
+```{r save_adjusted_betas}
+save(adj_y1_betas, pdata_nodups, annotation,
+     file = here("output_data", "celltype_corrected_betas", "2020-12-14_CHILD_ageone_betas_celltype_corrected.Rdata"))
+```
+ 
+
+
+
+
+
+
+

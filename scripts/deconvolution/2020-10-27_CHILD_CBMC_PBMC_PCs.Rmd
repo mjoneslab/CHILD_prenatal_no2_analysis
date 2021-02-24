@@ -1,0 +1,152 @@
+---
+title: "CHILD CBMCs and age one PBMCs:  generation of estimated cell type proportion PCs."
+author: "SL"
+date: "2020-10-27"
+output: html_document
+---
+
+*Purpose*: The purpose of this script is to calculate PCs for estimate cell types at birth and age one. This must be done together as cell types for these time points will be corrected for at the same time in the final linear model examining changes at age one. 
+
+*NB*: Age one PBMCs should be deconvoluted with FlowSorted.CordBloodCombined.450k and the default probeselect="any".
+
+### Cell type correction
+
+Based on "Adjusting for cell type composition in DNA methylation data using a regression-based approach" by Jones et al (2017).  
+
+The data is composite data and cell types are not independent of one another:  
+
+Two ways of dealing with this:  
+
+1. Do a PCA  
+* variables are not independent -PCA will give all the same data but in independent vectors  
+* But cant do PCA on composite data - this is composite data  
+* Do a centred log ratio before PCA to get around this  
+
+2. Leave out one cell type  
+* More simple way  
+* Usually leave cell type that is largest proportion  
+* For whole blood/cord blood - drop granulocytes  
+* For PMBCs and CBMCs - drop CD4T cells 
+
+As we will need to correct for CBMC proportions and age one PBMC proportions in our age one linear model, we will cell type PCs for correction in final linear models.
+
+
+### Script for PC generation from cell type proportions
+
+Load libraries required for PC generation.
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(minfi)
+library(rgr)
+library(GGally)
+library(factoextra)
+library(here)
+```
+
+
+Load CHILD birth CBMC and age one PBCMC deconvolution data.
+```{r load_CHILD_data, message=FALSE, warning=FALSE}
+load(here("output_data", "deconvolution", "2020-11-10_CBMC_PBMC_deconvolution.RData"))
+```
+
+Load pdata
+```{r pdata}
+load(here("output_data", "preprocessed_data", "2020-11_10_CHILD_preprocessed_mvals_pdata_annotation.RData"))
+
+#convert pdata to dataframe
+pdata_df <- as.data.frame(pdata_nodups)
+
+##subset pdata into CBMC and age one PBMC
+#CBMC
+cb_pdata <- pdata_df %>% subset(Tissue == "C")
+#check size
+dim(cb_pdata) #144
+#PBMC
+y1_pdata <- pdata_df %>% subset(Tissue == "P")
+#check size
+dim(y1_pdata) #145
+
+#keep samples in pdata that have data available at both birth and age one time point
+keep <- intersect(cb_pdata$Sample_Label, y1_pdata$Sample_Label) #144
+#CBMC
+cb_pdata_sub <- cb_pdata[cb_pdata$Sample_Label %in% keep,]
+dim(cb_pdata_sub) #144
+#PBMC
+y1_pdata_sub <- y1_pdata[y1_pdata$Sample_Label %in% keep,]
+dim(y1_pdata_sub) #144
+
+#are pdatas in same order
+identical(cb_pdata_sub$Sample_Label, y1_pdata_sub$Sample_Label) #true
+```
+
+Combined CBMC and age one PBMC estimates into one data frame.
+```{r combine_celltype_estimates}
+#convert age one pbmc cell counts matrix
+child_fscbc_ecc2_cb_df <- as.data.frame(child_fscbc_ecc2_cb)
+#rename columsn for clarity
+colnames(child_fscbc_ecc2_cb_df) <- paste("cbmc", colnames(child_fscbc_ecc2_cb_df), sep=".")
+#subset for samples in pdata
+child_fscbc_ecc2_cb_df_sub <- child_fscbc_ecc2_cb_df[rownames(cb_pdata_sub),]
+dim(child_fscbc_ecc2_cb_df_sub) #144
+#check that order is identical between cell types and pdata
+identical(rownames(child_fscbc_ecc2_cb_df_sub), rownames(cb_pdata_sub))#true
+#rename rows to sample label
+rownames(child_fscbc_ecc2_cb_df_sub) <- as.character(cb_pdata_sub$Sample_Label)
+
+#convert age one pbmc cell counts matrix
+child_fscbc_ecc2_y1_df <- as.data.frame(child_fscbc_ecc2_y1)
+#rename columns for clarity
+colnames(child_fscbc_ecc2_y1_df) <- paste("pbmc", colnames(child_fscbc_ecc2_y1_df), sep=".")
+#subset for samples in pdata
+child_fscbc_ecc2_y1_df_sub <- child_fscbc_ecc2_y1_df[rownames(y1_pdata_sub),]
+dim(child_fscbc_ecc2_y1_df_sub)#144
+#check that order is identical between cell types and pdata
+identical(rownames(child_fscbc_ecc2_y1_df_sub), rownames(y1_pdata_sub))#true
+#rename rows to sample label
+rownames(child_fscbc_ecc2_y1_df_sub) <- as.character(y1_pdata_sub$Sample_Label)
+
+#check that rows (individuals) of birth and age one cell type estimates are the same
+identical(rownames(child_fscbc_ecc2_cb_df_sub), rownames(child_fscbc_ecc2_y1_df_sub)) #true
+
+#combine cell type estimates into one data frame
+all_celltypes <- cbind(child_fscbc_ecc2_cb_df_sub, child_fscbc_ecc2_y1_df_sub)
+head(all_celltypes)
+```
+
+
+
+For combined cell type PCs, dont do CLR as cell types won't add up to 100 (they will be more than 100). Still check for any weird values.
+```{r check_neg_values}
+#check how many negatives
+sum(all_celltypes <= 0) #0
+```
+
+Run PCA analysis on CLR transformed cell type estimates
+```{r celltype_pca}
+#pca
+#prcomp using singular value decomposition (svd)m which examines the covariances / correlations between individuals
+all_pca <- prcomp(all_celltypes, scale. = TRUE)
+
+#scree plot to visualize how many PCs we need
+fviz_eig(all_pca) #correct on first 9 pcs
+
+#convert to dataframe
+all_pcs <- as.data.frame(all_pca$x)
+
+#examine grouping of pcs
+ggpairs(all_pcs, columns=1:11, progress=FALSE)  
+```
+
+
+Save age one cell type PCs.
+```{r save_adjusted_betas}
+save(all_pcs, file = here("output_data", "deconvolution", "2020-11-10_CBMC_PBMC_PCs.rdata"))
+```
+ 
+
+
+
+
+
+
+

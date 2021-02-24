@@ -1,0 +1,341 @@
+---
+title: "CHILD cord blood linear regression for PM2.5 effect"
+author: "SL"
+date: "12/09/2020"
+output: html_document
+---
+
+*Purpose*: The purpose of this script is to examine DNAm changes in cord blood associated with prenatal PM2.5 exposure.
+
+
+Load required libraries.
+```{r libraries}
+library(tidyverse)
+library(limma)
+library(here)
+```
+
+Load covariate data
+```{r covariates}
+load(here("output_data","covariates", "2020-11-04_CHILD_covariates_na_with_means.Rdata"))
+```
+
+
+Load DNAm data and pdata. Subset out cord blood samples.
+```{r pdata}
+load(file=here("output_data", "preprocessed_data", "2020-11_10_CHILD_preprocessed_mvals_pdata_annotation.Rdata"))
+
+#check ranges to confirm DNAm data is in m-value format
+dim(mval_batchcorr)
+max(mval_batchcorr)
+min(mval_batchcorr)
+
+#subset pData into CBMCs (cord blood)
+#these children have data at both time points
+cb_pdata <- subset(pdata_nodups, Tissue == "C")
+dim(cb_pdata)
+
+#subset cordblood DNAM samples
+cb_mval_batchcorr <- mval_batchcorr[ ,colnames(mval_batchcorr) %in% rownames(cb_pdata)]
+
+#check size for correct sample num
+dim(cb_mval_batchcorr) #144
+
+#convert mvals to beta values 
+#beta values will be used in linear regression because of substraction used on year one data (which has to be done on beta values). using the same format will make the data more comparable.
+cb_beta_batchcorr <- lumi::m2beta(cb_mval_batchcorr)
+min(cb_beta_batchcorr)
+max(cb_beta_batchcorr)
+
+#rename colnames of beta values to sample label
+#create new column in pdata
+cb_pdata$sentrix_name <- paste(cb_pdata$Sentrix_ID, cb_pdata$Sentrix_Position, sep="_")
+identical(colnames(cb_beta_batchcorr), cb_pdata$sentrix_name)#true
+colnames(cb_beta_batchcorr) <- cb_pdata$Sample_Label
+```
+
+Subset covariates for individuals with cord blood DNAm.
+```{r sub_covariates}
+covariates_sub <- covariates_nameans[as.character(covariates_nameans$sampleid) %in% colnames(cb_beta_batchcorr), ]
+
+#check if they are in the same order
+identical(as.character(covariates_sub$sampleid), colnames(cb_beta_batchcorr)) #true
+```
+
+
+Load CBMC PCs.
+```{r load_PC_correctedbetas}
+load(here("output_data", "deconvolution", "2020-11-10_CBMC_PCs.Rdata"))
+
+dim(cb_pcs) #144 6
+
+#rename columns for clarity
+colnames(cb_pcs) <- paste("cbmc.", colnames(cb_pcs), sep="")
+```
+
+
+Load genotyping PCs and subset out REEGLE PCs (genotyping data contains PCs for a few thousand participants).
+```{r genotypingPCS}
+genotyping <- read.csv("R:/Jones/People/Samantha Lee/Computational/CHILD/input_data/CHILD_subjects_Qced_first10PCS_Duan.csv")
+
+#make rownames sample names then rmove this row
+rownames(genotyping) <- genotyping$FID
+genotyping <- subset(genotyping, select=-c(FID, IID))
+
+genosub <- genotyping[rownames(genotyping) %in% cb_pdata$Sample_Label,]
+#missing genotyping data for 14 REEGLE children?
+
+#rename columns of genotyping data for clarity
+colnames(genosub) <- paste("genotyping.", colnames(genosub), sep="")
+```
+
+
+Check that betas, pdata, covariates, cell type PCs are in same order.
+```{r cb_batchcorr_order}
+#check that pdata and betas are in correct order
+identical(as.character(cb_pdata$Sample_Label), colnames(cb_beta_batchcorr)) #true
+
+#check that pdata and covariates are in the same order
+identical(as.character(cb_pdata$Sample_Label), as.character(covariates_sub$sampleid)) #true
+
+#check that pdata and cell type pcs are in same order
+identical(rownames(cb_pdata), rownames(cb_pcs)) #true
+```
+
+
+Add cell type PCs to covariate data
+```{r combine_cell_pcs_covariates}
+covariates_ctpcs <- cbind(covariates_sub, cb_pcs)
+```
+
+
+Subset covariates, pdata, and betas for individuals that have genotyping data. Add genotyping pcs to covariates
+```{r sub_on_geno}
+#subset covariates
+covariates_ctpcs_sub <- covariates_ctpcs[covariates_ctpcs$sampleid %in% rownames(genosub), ]
+dim(covariates_ctpcs_sub)
+
+#check that covariates and geno are in same order
+identical(as.character(covariates_ctpcs_sub$sampleid), rownames(genosub)) #false
+
+#put genosub rows in numerical order
+genosub_order <- genosub[order(rownames(genosub)), ]
+
+#check that covariates and geno are in same order
+identical(as.character(covariates_ctpcs_sub$sampleid), rownames(genosub_order)) #true
+
+#combine genosub with covariates
+covariates_ctpcs_geno <- cbind(covariates_ctpcs_sub, genosub_order)
+
+#subet betas for genotyping data
+cb_beta_batchcorr_geno <- cb_beta_batchcorr[,colnames(cb_beta_batchcorr) %in% rownames(genosub_order)] 
+dim(cb_beta_batchcorr_geno)
+
+#check that this is in the same order as covariates
+identical(as.character(covariates_ctpcs_geno$sampleid), colnames(cb_beta_batchcorr_geno)) #true
+
+#subset pdata
+cb_pdata_geno <- cb_pdata[as.character(cb_pdata$Sample_Label) %in% rownames(genosub_order), ]
+dim(cb_pdata_geno)
+
+#check that covariates and dpata are in same order
+identical(as.character(cb_pdata_geno$Sample_Label), as.character(covariates_ctpcs_geno$sampleid)) #true
+```
+
+Recode missing PM2.5 A data (this was coded differently than rest of variables)
+```{r recode_missing_pm2.5A}
+
+covariates_ctpcs_geno$PM25DALYY_01 <- ifelse(covariates_ctpcs_geno$PM25DALYY_01 < 0 , NA, covariates_ctpcs_geno$PM25DALYY_01)
+
+```
+
+
+
+Linear regression with PM2.5 A.
+```{r limma}
+
+#first check how many complete cases available for analysis
+sum(complete.cases(covariates_ctpcs_geno %>% dplyr::select(PM25DALYY_01, sex,
+                                                           cbmc.PC1, cbmc.PC2, 
+                                                           cbmc.PC3, cbmc.PC4, cbmc.PC5))) #113 complete cases now!
+
+
+#create model matrix
+cb_design <- model.matrix(~PM25DALYY_01 + sex +
+                            cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + 
+                            cbmc.PC4 + cbmc.PC5,
+                          data=covariates_ctpcs_geno)
+
+#check size
+dim(cb_design) #113
+
+
+#further subset covariates and beta values for complete cases
+#subset covariates
+covariates_ctpcs_geno_cc <- covariates_ctpcs_geno[complete.cases(covariates_ctpcs_geno %>% 
+                                                                   dplyr::select(PM25DALYY_01, 
+                                                                                 sex,
+                                                                                 cbmc.PC1, cbmc.PC2,
+                                                                                 cbmc.PC3, cbmc.PC4
+                                                                                 ,cbmc.PC5)), ] 
+#check size
+dim(covariates_ctpcs_geno_cc) #113
+
+#subset betas
+cb_beta_batchcorr_geno_cc <- cb_beta_batchcorr_geno[,colnames(cb_beta_batchcorr_geno) %in% covariates_ctpcs_geno_cc$sampleid]
+#check size
+dim(cb_beta_batchcorr_geno_cc) #113
+
+#fit methylation to no2
+cb_fit <-  lmFit(cb_beta_batchcorr_geno_cc, cb_design)
+cb_ebayes <- eBayes(cb_fit)
+
+#add annotation to cb_ebayes
+cb_ebayes$annotation <- annotation[rownames(annotation) %in% rownames(cb_ebayes),]
+
+#pull out pval, coefficients and annotation
+cb_pvals <- cbind(as.data.frame(cb_ebayes$p.value), 
+                  as.data.frame(cb_ebayes$coefficients),
+                  as.data.frame(cb_ebayes$annotation))
+
+#rename columns to indicate pvalues vs coeffcients 
+colnames(cb_pvals) <- c(paste("pval", colnames(cb_pvals)[1:8], sep = "_"), 
+                         paste("coeff", colnames(cb_pvals)[9:16], sep = "_"),
+                         colnames(cb_pvals)[17:49])
+
+cb_pvals$pval_PM25DALYY_01_adj <- p.adjust(cb_pvals$pval_PM25DALYY_01, method="BH")
+```
+
+
+Examine qqplot and pvalue histogram.
+```{r qqplot_pval_histo}
+#qqplot
+qqplot <- qplot(sample = -log10(pval_PM25DALYY_01), data = cb_pvals) + 
+  stat_qq(col = "#75A2D9") +
+  stat_qq_line() +
+  theme_bw() +
+  labs(x="Expected -log10(p)", y="Observed -log10(p)") + 
+  theme(panel.border = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text=element_text(size=16),
+        axis.title=element_text(size=20))
+        
+#histogram
+pval_histo <- ggplot( data = cb_pvals, aes(x=pval_PM25DALYY_01)) +
+  geom_histogram(bins=100, fill = "#75A2D9") +
+  labs(y="Count", x="Unadjusted p-value") +
+  theme_bw() +
+  theme(panel.border = element_blank(),
+        axis.text=element_text(size=18),
+        axis.title=element_text(size=20)) 
+
+
+qqplot
+pval_histo
+
+```
+
+
+
+
+
+Linear regression with PM2.5 B (PM25DALbYY_01)
+```{r limma}
+
+#first check how many complete cases available for analysis
+sum(complete.cases(covariates_ctpcs_geno %>% dplyr::select(PM25DALbYY_01, sex, 
+                                                           birth_month, 
+                                                           gestational_days,
+                                                           maternal_education_length,
+                                                           csed_18wk, 
+                                                           cbmc.PC1, cbmc.PC2, 
+                                                           cbmc.PC3, cbmc.PC4, cbmc.PC5,
+                                                           genotyping.PC1, genotyping.PC2,
+                                                           genotyping.PC3))) #116 complete cases now!
+
+
+#create model matrix
+cb_design <- model.matrix(~PM25DALbYY_01 + sex + 
+                            gestational_days + 
+                            birth_month +
+                            maternal_education_length + 
+                            csed_18wk + 
+                            cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + 
+                            cbmc.PC4 + cbmc.PC5 + genotyping.PC1 + 
+                            genotyping.PC2 + genotyping.PC3,
+                          data=covariates_ctpcs_geno)
+
+#check size
+dim(cb_design) #101
+
+
+#further subset covariates and beta values for complete cases
+#subset covariates
+covariates_ctpcs_geno_cc <- covariates_ctpcs_geno[complete.cases(covariates_ctpcs_geno %>% 
+                                                                   dplyr::select(PM25DALbYY_01, sex,
+                                                                                 birth_month, 
+                                                                                 gestational_days, 
+                                                                                 maternal_education_length,
+                                                                                 csed_18wk,
+                                                                                 cbmc.PC1, cbmc.PC2,
+                                                                                 cbmc.PC3, cbmc.PC4,cbmc.PC5,
+                                                                                 genotyping.PC1, genotyping.PC2,
+                                                                                 genotyping.PC3)), ] 
+#check size
+dim(covariates_ctpcs_geno_cc) #101
+
+#subset betas
+cb_beta_batchcorr_geno_cc <- cb_beta_batchcorr_geno[,colnames(cb_beta_batchcorr_geno) %in% covariates_ctpcs_geno_cc$sampleid]
+#check size
+dim(cb_beta_batchcorr_geno_cc) #101
+
+#fit methylation to no2
+cb_fit <-  lmFit(cb_beta_batchcorr_geno_cc, cb_design)
+cb_ebayes <- eBayes(cb_fit)
+
+#add annotation to cb_ebayes
+cb_ebayes$annotation <- annotation[rownames(annotation) %in% rownames(cb_ebayes),]
+
+#pull out pval, coefficients and annotation
+cb_pvals <- cbind(as.data.frame(cb_ebayes$p.value), 
+                  as.data.frame(cb_ebayes$coefficients),
+                  as.data.frame(cb_ebayes$annotation))
+
+#rename columns to indicate pvalues vs coeffcients 
+colnames(cb_pvals) <- c(paste("pval", colnames(cb_pvals)[1:25], sep = "_"), 
+                         paste("coeff", colnames(cb_pvals)[26:50], sep = "_"),
+                         colnames(cb_pvals)[51:83])
+
+cb_pvals$pval_PM25DALbYY_01_adj <- p.adjust(cb_pvals$pval_PM25DALbYY_01, method="BH")
+```
+
+
+Examine qqplot and pvalue histogram.
+```{r qqplot_pval_histo}
+#qqplot
+qqplot <- qplot(sample = -log10(pval_PM25DALbYY_01), data = cb_pvals) + 
+  stat_qq(col = "#75A2D9") +
+  stat_qq_line() +
+  theme_bw() +
+  labs(x="Expected -log10(p)", y="Observed -log10(p)") + 
+  theme(panel.border = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text=element_text(size=16),
+        axis.title=element_text(size=20))
+        
+#histogram
+pval_histo <- ggplot( data = cb_pvals, aes(x=pval_PM25DALbYY_01)) +
+  geom_histogram(bins=100, fill = "#75A2D9") +
+  labs(y="Count", x="Unadjusted p-value") +
+  theme_bw() +
+  theme(panel.border = element_blank(),
+        axis.text=element_text(size=18),
+        axis.title=element_text(size=20)) 
+
+
+qqplot
+pval_histo
+
+```

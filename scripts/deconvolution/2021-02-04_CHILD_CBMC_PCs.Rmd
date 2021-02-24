@@ -1,0 +1,119 @@
+---
+title: "CHILD cord blood cell cell type PC generation"
+author: "SL"
+date: "2020-10-27"
+output: html_document
+---
+
+*Purpose*: This script generates cell type PCs from CBMCs. CBMC PCs can be used in linear models to correct for cell type.
+
+## Cell type correction
+
+Correct cordblood for cell type using linear regression. 
+
+Based on "Adjusting for cell type composition in DNA methylation data using a regression-based approach" by Jones et al (2017).  
+
+The data is composite data and cell types are not independent of one another:  
+
+Two ways of dealing with this:  
+
+1. Do a PCA  
+* variables are not independent -PCA will give all the same data but in independent vectors  
+* But cant do PCA on composite data - this is composite data  
+* Do a centred log ratio before PCA to get around this  
+
+2. Leave out one cell type  
+* More simple way  
+* Usually leave cell type that is largest proportion  
+* For whole blood/cord blood - drop granulocytes  
+* For PMBCs and CBMCs - drop CD4T cells  
+
+
+## Principle Component (PC) generation
+
+Load required libraries.
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(minfi)
+library(rgr) #for log centred ratio transfromation
+library(factoextra)
+library(GGally)
+library(here)
+```
+
+Load CHILD145 deconvolution data. This deconvolution does not include granulocytes as granulocytes are not expected.
+```{r load_CHILD_data, message=FALSE, warning=FALSE}
+load(here("output_data", "deconvolution", "2021-01-07_CBMC_PBMC_deconvolution.RData"))
+
+#rm year one data
+rm(y1_allprobes, y1_deconvolutionprobes, child_fscbc_ecc2_y1)
+```
+
+Remove duplicates from cord blood deconvolution data.  
+```{r remove_dups_from_deconvo}
+#convert deconvolution data to dataframe
+child_fscbc_ecc2_cb_df <- as.data.frame(child_fscbc_ecc2_cb$counts)
+
+#make list of samples to remove from beta and pData
+dups_rm <-c("9298768102_R06C01", "9341679111_R05C02", "9298768023_R03C02",
+            "9341679076_R06C02", "9297962089_R06C02", "9298768023_R02C02",
+            "9341679097_R02C02", "9341679114_R01C02", "9298768023_R06C01")
+
+#remove replicates from cell type estimates                      
+child_fscbc_ecc2_cb_df_nodups <-
+  child_fscbc_ecc2_cb_df[!rownames(child_fscbc_ecc2_cb_df) %in% dups_rm, ]
+
+#check that 9 samples were removed
+dim(child_fscbc_ecc2_cb_df_nodups)
+dim(child_fscbc_ecc2_cb_df)
+```
+
+
+Centred log ratio wont accept negative values. Additionally, centred log ratio will accept zeros however rows with 0s will return NA for 0 instance and infinity for all othe values. Therefore check for any negative values as well as 0s. If there are zeroes or negatives need to investigate why.
+```{r remove_neg_values}
+#check how many negatives
+sum(child_fscbc_ecc2_cb_df_nodups <= 0) #0
+```
+
+Centred log ratio of estimated cell type proportions.
+```{r clr}
+cb_celltypes_clr <- clr(as.matrix(child_fscbc_ecc2_cb_df_nodups))
+
+#check for NAs or inf
+#these will occur if zeroes or negatives existed in cell tyoe estimates
+sum(is.na(cb_celltypes_clr)) #0
+sum(is.infinite(cb_celltypes_clr)) #0
+```
+
+Run PCA analysis on CLR transformed cell type estimates
+```{r celltype_pca}
+#pca
+cb_pca <- prcomp(cb_celltypes_clr, scale. = TRUE)
+
+#scree plot
+factoextra::fviz_eig(cb_pca)
+
+#convert to dataframe
+cb_pcs <- as.data.frame(cb_pca$x)
+#correct based on first 5 PCs
+
+#examine grouping of pcs
+ggpairs(cb_pcs, columns=1:6, progress=FALSE)  
+```
+
+Save CBMC PCs. 
+```{r save_adjusted_betas}
+save(cb_pcs, 
+     cb_allprobes,
+     cb_deconvolutionprobes,
+     child_fscbc_ecc2_cb_df_nodups,
+     file=here("output_data", "deconvolution", "2021-02-04_CBMC_PCs.RData"))
+```
+ 
+
+
+
+
+
+
+
