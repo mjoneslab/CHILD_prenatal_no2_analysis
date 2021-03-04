@@ -206,46 +206,6 @@ covariates_ctpcs_geno_tech <- cbind(covariates_ctpcs_geno,
 
 Linear regression using limma and complete cases
 ```{r limma}
-#how many complete cases now?
-sum(complete.cases(covariates_ctpcs_geno_tech %>% 
-                     dplyr::select(no2_y1_entire, sex,  
-                                   maternal_smoking_y1,  
-                                   maternal_education_length, 
-                                   pss_6mos, 
-                                   csed_6mos,
-                                   genotyping.PC1, 
-                                   genotyping.PC2,
-                                   genotyping.PC3,
-                                   celltype.PC1, celltype.PC2,
-                                   celltype.PC3, celltype.PC4,
-                                   celltype.PC5, celltype.PC6,
-                                   celltype.PC7, celltype.PC8,
-                                   celltype.PC9,
-                                   cb_run, cb_row, 
-                                   y1_row, y1_run))) #125 complete cases now
-
-
-#create model matrix
-diff_design <- 
-  model.matrix(~no2_y1_entire + sex +
-                 maternal_smoking_y1 + 
-                 maternal_education_length +
-                 pss_6mos + 
-                 csed_6mos + 
-                 genotyping.PC1 + genotyping.PC2 + 
-                 genotyping.PC3 + 
-                 celltype.PC1 + celltype.PC2+
-                 celltype.PC3+ celltype.PC4+
-                 celltype.PC5+ celltype.PC6+
-                 celltype.PC7+ celltype.PC8+
-                 celltype.PC9+
-                 cb_run+ cb_row+ 
-                 y1_row+ y1_run, 
-               data=covariates_ctpcs_geno_tech)
-
-#check size
-dim(diff_design) #125
-
 #further subset covariates and beta values for complete cases
 #subset covariates
 covariates_ctpcs_geno_tech_cc <- 
@@ -262,9 +222,33 @@ covariates_ctpcs_geno_tech_cc <-
                                            celltype.PC3, celltype.PC4,
                                            celltype.PC5, celltype.PC6,
                                            celltype.PC7, celltype.PC8,
-                                           celltype.PC9,
-                                           cb_run, cb_row, 
-                                           y1_row, y1_run) %>% complete.cases,] 
+                                           celltype.PC9
+                                           #cb_run, cb_row, 
+                                           #y1_row, y1_run
+                                           ) %>% complete.cases,] 
+
+#create model matrix
+mod <- 
+  model.matrix(~ no2_y1_entire + as.factor(sex) +
+                 as.factor(maternal_smoking_y1) + 
+                 maternal_education_length +
+                 pss_6mos + 
+                 csed_6mos + 
+                 genotyping.PC1 + genotyping.PC2 + 
+                 genotyping.PC3 + 
+                 celltype.PC1 + celltype.PC2+
+                 celltype.PC3+ celltype.PC4+
+                 celltype.PC5+ celltype.PC6+
+                 celltype.PC7+ celltype.PC8+
+                 celltype.PC9 +  
+               #as.character(cb_chip) + as.character(y1_chip) +
+                 as.factor(cb_run) + as.factor(y1_run) + 
+                 y1_row + cb_row  , 
+               data=covariates_ctpcs_geno_tech_cc)
+
+#check size
+dim(mod) #125
+
 
 #check size
 dim(covariates_ctpcs_geno_tech_cc) # 125 140 
@@ -282,13 +266,111 @@ diff_betas_geno_cc_cpr <-
 dim(diff_betas_geno_cc_cpr) #424079    125
 #565 probes removed
 
+#################
+# calculate svs #
+#################
+
+#null matrix
+
+mod0 <- 
+  model.matrix(~ 1, 
+               data=covariates_ctpcs_geno_tech_cc)
+
+#Set seed
+set.seed(1234)
+#Estimate the number of surrogate variables
+ #if n.sv is not included, the number of factors is estimated for you
+svobj = sva(diff_betas_geno_cc_cpr,mod,mod0) # 16 factors
+
+# How much variance do the sv's account for
+dat <- diff_betas_geno_cc_cpr
+pprob <- svobj$pprob.gam*(1-svobj$pprob.b)
+dats <- dat*pprob
+dats <- dats - rowMeans(dats)
+uu <- eigen(t(dats)%*%dats)
+uu_val <- uu$values/sum(uu$values)
+# Do I need to square these?
+uu_val2 <- uu_val^2
+
+x_val <- 1:ncol(dats)
+
+expl_var_plot <- as.data.frame(cbind(x_val,uu_val2))
+
+ggplot(expl_var_plot[1:15,], aes(x_val,uu_val2)) +
+  geom_point(size=3,pch=19, color="blue")  + 
+  scale_color_gradient() +  
+  #geom_text(aes(label=rownames(expl_var_plot)),hjust=0.5,vjust=2,size=3) +
+  xlab("SV") +
+  ylab("uuvalues)")
+
+
+
+
+covariates_ctpcs_geno_tech_cc <- cbind(covariates_ctpcs_geno_tech_cc,svobj$sv)
+colnames(covariates_ctpcs_geno_tech_cc)[141:156] <- 
+  c("sv1", "sv2", "sv3", "sv4", "sv5",
+    "sv6", "sv7", "sv8", "sv9", "sv10",
+    "sv11", "sv12", "sv13", "sv14", "sv15", "sv16")
+
+mvals <- lumi::beta2m(diff_betas_geno_cc_cpr)
+
+
+#pca 
+uncor.dat <- t(scale(t(mvals)))
+PCA_full<-princomp(na.omit(uncor.dat))
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance <-vars/sum(vars)
+
+
+#Specify which covariates are categorical and/or continuous
+meta_categorical <- covariates_ctpcs_geno_tech_cc[,c("sex", "cb_chip", "y1_chip",
+                                                     "cb_run", "y1_run",
+                                                    "maternal_smoking_y1")] 
+meta_continuous <- covariates_ctpcs_geno_tech_cc[,c("no2_y1_entire", 
+                                                   "genotyping.PC1",
+                                                   "genotyping.PC2",
+                                                   "genotyping.PC3",
+                                                   "celltype.PC1", 
+                                                   "celltype.PC2",
+                                                   "celltype.PC3", 
+                                                   "celltype.PC4",
+                                                   "celltype.PC5",
+                                                   "celltype.PC6",
+                                                   "celltype.PC7",
+                                                   "celltype.PC8",
+                                                   "celltype.PC9",
+                                                   "pss_6mos",
+                                                   "csed_6mos",
+                                                   "maternal_education_length",
+                                                   "cb_row", "y1_row",
+                                                   "sv1", "sv2", "sv3", "sv4",
+                                                    "sv5", "sv6", "sv7", "sv8", 
+                                                   "sv9", "sv10", "sv11", 
+                                                   "sv12", "sv13", "sv14", 
+                                                   "sv15", "sv16")]
+# Specify the number of PCs you want shown 
+# pick enough to view most of the variance
+Num<-10
+
+# Designate what order you want the variables to appear (continuous variables rbinded to categorical variables in function)
+Order<-c(1:40)
+
+#Apply function on PCA results of uncorrected data, pulls in the meta data and beta values from above
+heat_scree_plot(Loadings, Importance, Num, Order)
+
+
+
+#Design matrix for limma with surrogate variables
+modSv = cbind(mod,svobj$sv[,1:15])
+
 
 ###############
 #### LIMMA ####
 ###############
 
 #fit methylation to no2
-diff_fit <-  lmFit(diff_betas_geno_cc_cpr, diff_design)
+diff_fit <-  lmFit(diff_betas_geno_cc_cpr, mod)
 diff_ebayes <- eBayes(diff_fit)
 
 #add annotation to cb_ebayes
@@ -308,10 +390,11 @@ diff_pvals_tech <- cbind(as.data.frame(diff_ebayes$p.value),
                   as.data.frame(diff_ebayes$annotation))
 
 #rename columns to indicate pvalues vs coefficients 
-colnames(diff_pvals_tech) <- c(paste("pval", colnames(diff_pvals_tech)[1:26], sep = "_"), 
-                         paste("coeff", colnames(diff_pvals_tech)[27:52], sep = "_"),
-                         colnames(diff_pvals_tech)[53:85])
-
+colnames(diff_pvals_tech) <- c(paste("pval", colnames(diff_pvals_tech)[1:27],
+                                     sep = "_"), 
+                               paste("coeff", colnames(diff_pvals_tech)[28:54], 
+                                     sep = "_"),
+                               colnames(diff_pvals_tech)[55:87])
 
 diff_pvals_tech$adj_pval_no2_y1_entire <- p.adjust(diff_pvals_tech$pval_no2_y1_entire, method="BH")
 ```
@@ -320,12 +403,9 @@ diff_pvals_tech$adj_pval_no2_y1_entire <- p.adjust(diff_pvals_tech$pval_no2_y1_e
 
 Examine qqplot and pvalue histogram.
 ```{r qqplot_pval_histo}
-library(car)
-
 ########
 #qqplot#
 ########
-
 
 # use code from qqman::qq function 
 # plot with ggplot to make it more aesthetically appealling 
@@ -538,7 +618,11 @@ yearone_goi_list <-
               genotyping.PC1 + genotyping.PC2 + 
               genotyping.PC3 +
               cb_run + cb_row +
-              y1_run + y1_row, data=combined)
+              y1_run + y1_row + 
+              sv1 + sv2 + sv3 + sv4 +
+              sv5 + sv6 + sv7 + sv8 + 
+              sv9 + 
+              sv10 + sv11 + sv12 + sv13, data=combined)
   
   #get summary of lm fit
   #this includes coefficients and pvalues
@@ -605,7 +689,7 @@ yearone_goi_df <- cbind(yearone_goi_order, goi_order)
 
 #graph two marginally significant cpgs
 
-covariates_ctpcs_geno_tech_cc$cg18668679 <- adj_diff_betas_geno_cc[rownames(adj_diff_betas_geno_cc)=="cg18668679", ]
+covariates_ctpcs_geno_tech_cc$cg18668679 <- diff_betas_geno_cc_cpr[rownames(diff_betas_geno_cc_cpr)=="cg18668679", ]
 
 
 cg18668679_lm <- lm(cg18668679 ~ no2_y1_entire + 
@@ -621,8 +705,11 @@ cg18668679_lm <- lm(cg18668679 ~ no2_y1_entire +
                       celltype.PC9 + 
                       genotyping.PC1 + genotyping.PC2 + 
                       genotyping.PC3 +
-                                    cb_run + cb_row +
-              y1_run + y1_row, data=covariates_ctpcs_geno_tech_cc)
+                      cb_run + cb_row +
+              y1_run + y1_row +
+              sv1 + sv2 + sv3 + sv4 +
+              sv5 + sv6 + sv7 + sv8  + sv9, 
+              data=covariates_ctpcs_geno_tech_cc)
 
 
 #get partial residuals for no2 and dnam 
@@ -636,11 +723,11 @@ summary(cg18668679_res)
 
 ggplot(cg18668679_res, aes(x=xresid, y=yresid)) + 
   geom_point(alpha=0.8, col = "#75A2D9", size=2) + 
-  stat_smooth(method="lm", se=F, col="black") +
+  stat_smooth(method="lm", se=F, col="black", linetype="dashed") +
   theme_bw() +
   labs(x="Year one NO2 (ppb)", 
-       y=str_wrap("Lon protease homolog (LONP1) cg18668679 DNA methyaltion (%)",width=40)) +
-  ggtitle("Partial residual plot") +
+       y=str_wrap("DNA methyaltion (%)",width=40)) +
+  ggtitle("cg18668679 partial residual plot") +
   theme(panel.border=element_blank(),
         axis.text = element_text(size=12),
         axis.title = element_text(size=14),
@@ -712,9 +799,9 @@ ggplot(cg07793849_res, aes(x=xresid, y=yresid)) +
 Examine mean methylation vs no2
 ```{r mean_meth}
 #convert betas to df
-adj_diff_betas_geno_cc_df <- as.data.frame(adj_diff_betas_geno_cc)
+diff_betas_geno_cc_cpr_df <- as.data.frame(diff_betas_geno_cc_cpr)
 
-methmeans <- colMeans(adj_diff_betas_geno_cc_df)
+methmeans <- colMeans(diff_betas_geno_cc_cpr_df)
 
 covariates_ctpcs_geno_tech_cc <- cbind(covariates_ctpcs_geno_tech_cc, methmeans)
 
@@ -732,7 +819,12 @@ meanmeth_lm <- lm(methmeans ~ no2_y1_entire +
                       celltype.PC9 + 
                       genotyping.PC1 + genotyping.PC2 + 
                       genotyping.PC3 +
-                      run + row, data=covariates_ctpcs_geno_tech_cc)
+                      cb_run + cb_row +
+                     y1_run + y1_row +
+              sv1 + sv2 + sv3 + sv4 +
+              sv5 + sv6 + sv7 + sv8 + 
+              sv9 +
+                sv10 + sv11 + sv12 + sv13, data=covariates_ctpcs_geno_tech_cc)
 
 #get summary
 summary(meanmeth_lm) #no2 not sig
@@ -748,7 +840,7 @@ summary(methmean_res)
 
 ggplot(methmean_res, aes(x=xresid, y=yresid)) + 
   geom_point(alpha=0.8, col = "#75A2D9", size=2) + 
-  stat_smooth(method="lm", se=F, col="black") +
+  stat_smooth(method="lm", se=F, col="black", linetype="dashed") +
   theme_bw() +
   labs(x="Year one NO2 (ppb)", y="Genome wide DNA methyaltion (%)") +
   ggtitle("Partial residual plot") +
@@ -770,17 +862,17 @@ annotationlines <- read.csv(here("output_data", "linear_regression", "2020-11-29
 annotationlines <- annotationlines[annotationlines$LINEs==T, ]
 
 #subset betas
-adj_diff_betas_geno_cc_lines <- 
-  adj_diff_betas_geno_cc[rownames(adj_diff_betas_geno_cc) %in%
+diff_betas_geno_cc_cpr_lines <- 
+  diff_betas_geno_cc_cpr[rownames(diff_betas_geno_cc_cpr) %in%
                      annotationlines$X, ]
 
-dim(adj_diff_betas_geno_cc_lines)
+dim(diff_betas_geno_cc_cpr_lines)
 
 
 #convert betas to df
-adj_diff_betas_geno_cc_lines_df <- as.data.frame(adj_diff_betas_geno_cc_lines)
+diff_betas_geno_cc_cpr_lines_df <- as.data.frame(diff_betas_geno_cc_cpr_lines)
 
-linemeth <- colMeans(adj_diff_betas_geno_cc_lines_df)
+linemeth <- colMeans(diff_betas_geno_cc_cpr_lines_df)
 
 covariates_ctpcs_geno_tech_cc$linemeth <- linemeth
 
@@ -798,7 +890,11 @@ linemeth_lm <- lm(linemeth ~ no2_y1_entire +
                       celltype.PC9 + 
                       genotyping.PC1 + genotyping.PC2 + 
                       genotyping.PC3 +
-                      run + row, data=covariates_ctpcs_geno_tech_cc)
+                      cb_run + cb_row +
+                     y1_run + y1_row +
+              sv1 + sv2 + sv3 + sv4 +
+              sv5 + sv6 + sv7 + sv8 + 
+              sv9, data=covariates_ctpcs_geno_tech_cc)
 
 summary(linemeth_lm) #no2 not sig
 
@@ -816,7 +912,7 @@ summary(linemeth_res_fit)
 
 ggplot(linemeth_res, aes(x=xresid, y=yresid)) + 
   geom_point(alpha=0.8, col = "#75A2D9", size=2) + 
-  stat_smooth(method="lm", se=F, col="black") +
+  stat_smooth(method="lm", se=F, col="black", linetype="dashed") +
   theme_bw() +
   labs(x="Year one NO2 (ppb)", y="LINE DNA methyaltion (%)") +
   ggtitle("Partial residual plot") +
@@ -1306,4 +1402,333 @@ ggplot( data = cb_pvals_tech, aes(x=pval_no2_preg_entire)) +
         axis.title=element_text(size=20)) 
 ```
 
+
+
+Next examine correlation bewteen variables.
+```{r corr}
+
+cor2 = function(df){
+  
+  print("checking dataframe clases")
+  stopifnot(inherits(df, "data.frame"))
+  stopifnot(sapply(df, class) %in% c("integer"
+                                     , "numeric"
+                                     , "factor"
+                                     , "character"))
+  
+  print("calculating correlation matrix")
+  cor_fun <- function(pos_1, pos_2){
+    
+    # both are numeric
+    if(class(df[[pos_1]]) %in% c("integer", "numeric") &&
+       class(df[[pos_2]]) %in% c("integer", "numeric")){
+      print("both are numeric")
+      print(paste(colnames(df)[[pos_1]], colnames(df)[[pos_2]]))
+      r <- stats::cor(df[[pos_1]], df[[pos_2]], use = "pairwise.complete.obs")
+    }
+    
+    #one is numberic the other is factor/character
+    #must use sum of squares type 3 because groups are not of the same size
+    #calculates ANOVA
+    #then calcualtes eta-squared: measures the proportion of the total variance in a      dependent variable that
+    #is associated with the membership of different groups defined by an independent      variable.
+    #takes square root to get correlation
+    if(class(df[[pos_1]]) %in% c("integer", "numeric") &&
+       class(df[[pos_2]]) %in% c("factor", "character")){
+      
+      #print statements for debugging
+      print("first is numeric, second is factor")
+      print(paste(colnames(df)[[pos_1]], colnames(df)[[pos_2]]))
+      
+      #check factor levels of complete cases
+      print("checking levels of pos_2 factor")
+      tmp <- data.frame(df[[pos_1]], df[[pos_2]], row.names = NULL)
+      complete <- complete.cases(tmp)
+      tmp2 <- tmp[complete,]
+      tmp2[,2] <- as.factor(tmp2[,2])
+      
+      #if statement to catch cases where dropped values result in a factor with
+      #one or fewer levels
+      if(is.factor(tmp2[,2]) & (nlevels(droplevels(tmp2[,2]))<2)){
+        r <- 999
+      } else {
+        #anova for correlation
+        r <- stats::aov(df[[pos_1]] ~ as.factor(df[[pos_2]])) %>%
+          lsr::etaSquared(type=3) %>% `[`(1) %>% sqrt()
+      }
+      rm(tmp,tmp2)
+    }
+    
+    
+    if(class(df[[pos_2]]) %in% c("integer", "numeric") &&
+       class(df[[pos_1]]) %in% c("factor", "character")){
+      
+      #print statements for debugging
+      print("first is factor, second is numeric")
+      print(paste(colnames(df)[[pos_1]], colnames(df)[[pos_2]]))
+      
+      #check factor levels of complete cases
+      print("checking levels of pos_1 factor")
+      tmp <- data.frame(df[[pos_1]], df[[pos_2]], row.names = NULL)
+      complete <- complete.cases(tmp)
+      tmp2 <- tmp[complete,]
+      tmp2[,1] <- as.factor(tmp2[,1])
+      
+      #if statement to catch cases where dropped values result in a factor with
+      #one or fewer levels
+      if(is.factor(tmp2[,1]) && (nlevels(droplevels(tmp2[,1]))<2)){
+        r <- 999
+      } else {
+        r <- stats::aov(df[[pos_2]] ~ as.factor(df[[pos_1]])) %>%
+          lsr::etaSquared(type=3) %>% `[`(1) %>% sqrt()
+      }
+      rm(tmp,tmp2)
+    }
+    
+    
+    #both are factor/character
+    if(class(df[[pos_1]]) %in% c("factor", "character") &&
+       class(df[[pos_2]]) %in% c("factor", "character")){
+      
+      #print statement for debugging
+      print("both are characters")
+      print(paste(colnames(df)[[pos_1]], colnames(df)[[pos_2]]))
+      
+       #check factor levels of complete cases
+      print("checking levels of of both positions")
+      tmp <- data.frame(df[[pos_1]], df[[pos_2]], row.names = NULL)
+      complete <- complete.cases(tmp)
+      tmp2 <- tmp[complete,]
+      tmp2[,1] <- as.factor(tmp2[,1])
+      tmp2[,2] <- as.factor(tmp2[,2])
+      
+      #if statement to catch cases where dropped values result in a factor with
+      #one or fewer levels
+      if(is.factor(tmp2[,1]) && (nlevels(droplevels(tmp2[,1]))<2)){
+        r <- 999
+      } else {
+        if(is.factor(tmp2[,2]) && (nlevels(droplevels(tmp2[,2]))<2)){
+          r <-999
+        } else { 
+          r <- lsr::cramersV(df[[pos_1]], df[[pos_2]], simulate.p.value = TRUE)
+        }
+      }
+      rm(tmp,tmp2)
+    }
+    return(r)
+  } 
+  
+  cor_fun <- Vectorize(cor_fun)
+  
+  # now compute corr matrix
+  corrmat <- outer(1:ncol(df)
+                   , 1:ncol(df)
+                   , function(x, y) cor_fun(x, y)
+  )
+  
+  rownames(corrmat) <- colnames(df)
+  colnames(corrmat) <- colnames(df)
+  return(corrmat)
+}
+
+
+pval2 = function(df){
+  
+  #check that classes are appropriate
+  print("checking dataframe clases")
+  stopifnot(inherits(df, "data.frame"))
+  stopifnot(sapply(df, class) %in% c("integer"
+                                     , "numeric"
+                                     , "factor"
+                                     , "character"))
+  
+  print("calculating correlation matrix")
+  
+  ##################################
+  #function for calculating pvalues#
+  ##################################
+  
+  pval_fun <- function(pos_1, pos_2){
+    
+
+    ##################
+    #both are numeric#
+    ##################
+    
+    if(class(df[[pos_1]]) %in% c("integer", "numeric") &&
+       class(df[[pos_2]]) %in% c("integer", "numeric")){
+        
+      print("both are numeric")
+      
+      if(colnames(df)[[pos_1]] == colnames(df)[[pos_2]]){
+        #dont want to star comparisons of something against itsself
+        p <- 1
+      } else {
+        print(paste(colnames(df)[[pos_1]], colnames(df)[[pos_2]]))
+        p <- unname((summary(lm(df[[pos_1]] ~ df[[pos_2]]))$coefficients[,4])[2])
+      }
+    }
+  
+    ########################################
+    #first is integer and second is numeric#
+    ########################################
+    
+    if(class(df[[pos_1]]) %in% c("integer", "numeric") &&
+       class(df[[pos_2]]) %in% c("factor", "character")){
+      
+      #print statements for debugging
+      print("first is numeric, second is factor")
+      print(paste(colnames(df)[[pos_1]], colnames(df)[[pos_2]]))
+      
+      #check factor levels of complete cases
+      print("checking levels of pos_2 factor")
+      tmp <- data.frame(df[[pos_1]], df[[pos_2]], row.names = NULL)
+      complete <- complete.cases(tmp)
+      tmp2 <- tmp[complete,]
+      tmp2[,2] <- as.factor(tmp2[,2])
+      
+      #if statement to catch cases where dropped values result in a factor with
+      #one or fewer levels
+      if(is.factor(tmp2[,2]) & (nlevels(droplevels(tmp2[,2]))<2)){
+        p <- 999
+      } else {
+       if(nlevels(droplevels(tmp2[,2]))>2){
+          #anova for p-pval with 3 or  more factors
+          lm_p <- lm(df[[pos_1]] ~ as.factor(df[[pos_2]]))
+          p <- (anova(lm_p))$`Pr(>F)`[1]
+        } else{
+          #ttest for 2 factors
+          p <- t.test(df[[pos_1]] ~ as.factor(df[[pos_2]]),
+                  alternative = "two.sided")$p.value
+        }
+      }
+      rm(tmp,tmp2)
+    }
+    
+    
+    ########################################
+    #second is integer and first is numeric#
+    ########################################
+    
+    if(class(df[[pos_2]]) %in% c("integer", "numeric") &&
+       class(df[[pos_1]]) %in% c("factor", "character")){
+      
+      #print statements for debugging
+      print("first is factor, second is numeric")
+      print(paste(colnames(df)[[pos_1]], colnames(df)[[pos_2]]))
+      
+      #check factor levels of complete cases
+      print("checking levels of pos_1 factor")
+      tmp <- data.frame(df[[pos_1]], df[[pos_2]], row.names = NULL)
+      complete <- complete.cases(tmp)
+      tmp2 <- tmp[complete,]
+      tmp2[,1] <- as.factor(tmp2[,1])
+      
+      #if statement to catch cases where dropped values result in a factor with
+      #one or fewer levels
+      if(is.factor(tmp2[,1]) && (nlevels(droplevels(tmp2[,1]))<2)){
+        p <- 999
+      } else {
+        if(nlevels(droplevels(tmp2[,1]))>2){
+          #anova for p-pval with 3 or  more factors
+          lm_p <- lm(df[[pos_2]] ~ as.factor(df[[pos_1]]))
+          p <- (anova(lm_p))$`Pr(>F)`[1]
+        } else{
+          #ttest for 2 factors
+          p <- t.test(df[[pos_2]] ~ as.factor(df[[pos_1]]),
+                  alternative = "two.sided")$p.value
+        }
+      }
+      rm(tmp,tmp2)
+    }
+    
+    
+    ###########################
+    #both are factor/character#
+    ###########################
+    
+    if(class(df[[pos_1]]) %in% c("factor", "character") &&
+       class(df[[pos_2]]) %in% c("factor", "character")){
+      
+      #print statement for debugging
+      print("both are characters")
+      print(paste(colnames(df)[[pos_1]], colnames(df)[[pos_2]]))
+      
+       #check factor levels of complete cases
+      print("checking levels of of both positions")
+      tmp <- data.frame(df[[pos_1]], df[[pos_2]], row.names = NULL)
+      complete <- complete.cases(tmp)
+      tmp2 <- tmp[complete,]
+      tmp2[,1] <- as.factor(tmp2[,1])
+      tmp2[,2] <- as.factor(tmp2[,2])
+      
+      
+      #if statement to catch cases where dropped values result in a factor with
+      #one or fewer levels
+      if(colnames(df)[[pos_1]] == colnames(df)[[pos_2]]){
+        p <- 1
+      } else {
+        if(is.factor(tmp2[,1]) && (nlevels(droplevels(tmp2[,1]))<2)){
+          p <- 999
+        } else {
+          if(is.factor(tmp2[,2]) && (nlevels(droplevels(tmp2[,2]))<2)){
+            p <- 999
+          } else {
+            #get p value
+            fish_table <- table(df[[pos_1]], df[[pos_2]])
+            p <- fisher.test(fish_table, simulate.p.value = T)$p.value
+          }
+        }
+      }
+      rm(tmp,tmp2)
+    }
+    return(p)
+  } 
+  
+  pval_fun <- Vectorize(pval_fun)
+  
+  # now compute corr matrix
+  pvalmat <- outer(1:ncol(df)
+                   , 1:ncol(df)
+                   , function(x, y) pval_fun(x, y)
+  )
+  
+  rownames(pvalmat) <- colnames(df)
+  colnames(pvalmat) <- colnames(df)
+  return(pvalmat)
+}
+
+#early exp and pn_18 are the same thing. 
+#exclude early_exp from correlation matrices
+corr <- round(cor2(covariates_ctpcs_geno_tech_cc %>% 
+                select(-no_vaccines_6mos,
+                       -clinician_wheeze_dx_y3,
+                       -reported_asthma_dx_y1,
+                       -move_6m, -move_3m)))
+
+pval <- pval2(covariates_ctpcs_geno_tech_cc %>% 
+                select(-no_vaccines_6mos,
+                       -clinician_wheeze_dx_y3,
+                       -reported_asthma_dx_y1,
+                       -move_6m, -move_3m))
+
+
+corrsub <- corr[,136:151]
+pvalsub <- pval[,136:150]
+
+ggcorrplot(corr=corrsub,
+           #p.mat=pvalsub,
+           #insig = "blank",
+           type = "lower", 
+           #lab=TRUE,
+           #lab_size = 2,
+           tl.cex =6, 
+           colors = c("#6D9EC1", "white", "#E46726")) +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        legend.position="left") +
+  scale_y_discrete(position = "right")
+
+
+```
 

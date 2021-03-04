@@ -209,6 +209,7 @@ dim(gmset_nobadprobes) #477030    298
 Remove probes with SNPS  
 ```{r remove_snps}
 #drop snps
+#re run with maf=0.05????
 gmset_no_badprobes_snps <- dropLociWithSnps(gmset_nobadprobes, snps = c("CpG"), maf = 0)
 
 #create table of removed snps (should be all )
