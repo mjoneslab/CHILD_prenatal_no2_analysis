@@ -21,7 +21,7 @@ library(piecewiseSEM)
 Load betas
 ```{r covariates}
 load(file=here("output_data", "preprocessed_data",
-               "2020-11_19_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
+               "2021-01-14_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
 
 #subset out cord blood and year one pData
 #cord blood pdata
@@ -115,7 +115,7 @@ dim(y1_pdata_sub) #144
 Load combined cell type PCs (CBMC and PBMC together).
 ```{r load_celltype_PCs}
 load(here("output_data", "deconvolution",
-                 "2021-01-25_CHILD_CBMC_PBMC_PCs.Rdata"))
+                 "2021-02-04_CHILD_CBMC_PBMC_PCs.Rdata"))
 
 #check size
 dim(ccc_pcs) #144 11
@@ -134,7 +134,7 @@ dim(covariates_ctpcs)
 
 Load genotyping PCs and subset out REEGLE PCs (genotyping data contains PCs for a few thousand participants).
 ```{r genotypingPCS}
-genotyping <- read.csv("R:/Jones/People/Samantha Lee/Computational/CHILD/input_data/CHILD_subjects_Qced_first10PCS_Duan.csv")
+genotyping <- read.csv(here("input_data", "genotyping", "CHILD_subjects_Qced_first10PCS_Duan.csv"))
 
 #make rownames sample names then rmove this row
 rownames(genotyping) <- genotyping$FID
@@ -415,6 +415,10 @@ diff_pvals_tech$db <- diff_pvals_tech$coeff_no2_y1_entire * range
 
 Volcano plot
 ```{r volcano_db_tech}
+#make new column to label sig points with cpgid
+diff_pvals_tech$cpgid <- rownames(diff_pvals_tech)
+
+
 ggplot(diff_pvals_tech, aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_y1_entire)))) +
   geom_point(alpha=0.4, col = "#254A90", size=1) +
   
