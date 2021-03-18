@@ -807,8 +807,6 @@ ggplot(cb_pvals_tech, aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_pr
   ggsave( filename="2021-03-17_CHILD_cb_volcanoplot.png",
           path =  here("figures", "linear_regression", "prenatal"),
           width = 5, height = 4, units = "in")
- 
-#, angle=90, vjust = 0.5, hjust=1
 ```
 
 
@@ -858,7 +856,6 @@ ggplot(cb_cg05732646_res, aes(x=xresid, y=yresid)) +
         title = element_blank()) +
   ylim(-0.2, 0.2) +
   xlim(-16.5, 14) + 
-
   ggsave(filename="2021-03-17_CHILD_cb_cg05732646_KBTBD6.png",
          path =  here("figures", "linear_regression", "prenatal"),
          width = 3, height = 2.1, units = "in")
@@ -907,12 +904,9 @@ ggplot(cb_cg22908922_res, aes(x=xresid, y=yresid)) +
         title = element_blank())  +
   ylim(-0.2, 0.2) +
   xlim(-16.5, 14) +
-  
   ggsave(filename="2021-03-17_CHILD_cb_cg22908922_PACS2.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 3,
-         height = 2.1,
-         units = "in")
+         width = 3, height = 2.1, units = "in")
 
 
 #############################
@@ -936,8 +930,9 @@ cb_cg12228123_lm <- lm(cb_cg12228123 ~ no2_preg_entire +
 summary(cb_cg12228123_lm)
 
 # get partial residuals for no2 and dnam 
-cb_cg12228123_res <- partialResid(cb_cg12228123 ~ no2_preg_entire, cb_cg12228123_lm, 
-              data=covariates_geno_ctpc_tech_cc)
+cb_cg12228123_res <- partialResid(cb_cg12228123 ~ no2_preg_entire, 
+                                  cb_cg12228123_lm, 
+                                  data=covariates_geno_ctpc_tech_cc)
 
 # fit again to get r2
 cb_cg12228123_res_fit <- lm(cb_cg12228123_res$yresid ~ cb_cg12228123_res$xresid)
@@ -957,13 +952,10 @@ ggplot(cb_cg12228123_res, aes(x=xresid, y=yresid)) +
         axis.title = element_blank(),
         title = element_blank())  +
   ylim(-0.2, 0.2) +
-  xlim(-16.5, 14) + 
-  
+  xlim(-16.5, 14) +
   ggsave( filename="2021-02-04_CHILD_cb_cg12228123_AFAP1.png",
           path =  here("figures", "linear_regression", "prenatal"),
-          width = 3,
-          height = 2.1,
-          units = "in")
+          width = 3, height = 2.1, units = "in")
 ```
 
 
@@ -1505,12 +1497,9 @@ ggplot(y1_cg05732646_res, aes(x=xresid, y=yresid)) +
         title = element_blank())  +
   ylim(-0.2, 0.2) +
   xlim(-16.5, 14) +
-  
   ggsave( filename="2021-03-17_CHILD_y1_cg05732646_KBTBD6.png",
           path =  here("figures", "linear_regression", "prenatal"),
-          width = 3,
-          height = 2.1,
-          units = "in")
+          width = 3, height = 2.1, units = "in")
 
 
 ####################
@@ -1561,9 +1550,7 @@ ggplot(y1_cg22908922_res, aes(x=xresid, y=yresid)) +
   
   ggsave( filename="2021-03-17_CHILD_y1_cg22908922_PACS2.png",
           path =  here("figures", "linear_regression", "prenatal"),
-          width = 3,
-          height = 2.1,
-          units = "in")
+          width = 3, height = 2.1, units = "in")
 
 
 #############################
@@ -1611,12 +1598,30 @@ ggplot(y1_cg12228123_res, aes(x=xresid, y=yresid)) +
         title = element_blank())  +
   ylim(-0.2, 0.2) +
   xlim(-16.5, 14) +
-  
   ggsave( filename="2021-03-17_CHILD_y1_cg12228123_AFAP.png",
           path =  here("figures", "linear_regression", "prenatal"),
-          width = 3,
-          height = 2.1,
-          units = "in")
+          width = 3, height = 2.1, units = "in")
+
+
+
+ggplot(y1_cg12228123_res, aes(x=xresid, y=yresid)) +
+  geom_point(alpha=0.6, col = "#254A90", size=3) +
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") +
+  theme_bw() +
+  #labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"),
+  #     y="Methylation (%) partial residual") +
+  #annotate("text",x=7,y=0.06, label="slope = -0.0982", size=4) +
+  #ggtitle("cg05732646") +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=20),
+        axis.title = element_blank(),
+        title = element_blank()) +
+  ylim(-0.2, 0.2) +
+  xlim(-16.5, 16) +
+  ggsave(filename="2021-03-17_CHILD_y1_AFAP1_poster.png",
+          path =  here("figures", "linear_regression", "prenatal"),
+          width = 12, height = 8.15, units = "cm")
+
 ```
 
 
