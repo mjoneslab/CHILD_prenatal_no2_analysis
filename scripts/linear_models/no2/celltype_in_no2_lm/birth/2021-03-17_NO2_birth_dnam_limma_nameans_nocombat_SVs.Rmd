@@ -611,7 +611,6 @@ Order<-c(1:40)
 heat_scree_plot(Loadings, Importance, Num, Order)
 
 
-
 ############################################################
 # point plots to see how well SVs separate batch variables #
 ############################################################
@@ -843,8 +842,6 @@ cb_cg05732646_res <- partialResid(cb_cg05732646 ~ no2_preg_entire,
 # fit again to get r2
 cb_cg05732646_res_fit <- lm(cb_cg05732646_res$yresid ~ cb_cg05732646_res$xresid)
 
-test <-  lm(cb_cg05732646_res$yresid ~ cb_cg05732646_res$no2_preg_entire)
-
 # plot
 ggplot(cb_cg05732646_res, aes(x=xresid, y=yresid)) + 
   geom_point(alpha=0.6, col = "#254A90", size=2) + 
@@ -859,7 +856,7 @@ ggplot(cb_cg05732646_res, aes(x=xresid, y=yresid)) +
         axis.text = element_text(size=12),
         axis.title = element_blank(),
         title = element_blank()) +
-  ylim(-0.06, 0.06) +
+  ylim(-0.2, 0.2) +
   xlim(-16.5, 14) + 
 
   ggsave(filename="2021-03-17_CHILD_cb_cg05732646_KBTBD6.png",
@@ -908,7 +905,7 @@ ggplot(cb_cg22908922_res, aes(x=xresid, y=yresid)) +
         axis.text = element_text(size=12),
         axis.title = element_blank(),
         title = element_blank())  +
-  ylim(-0.10, 0.10) +
+  ylim(-0.2, 0.2) +
   xlim(-16.5, 14) +
   
   ggsave(filename="2021-03-17_CHILD_cb_cg22908922_PACS2.png",
@@ -1506,7 +1503,7 @@ ggplot(y1_cg05732646_res, aes(x=xresid, y=yresid)) +
         axis.text = element_text(size=12),
         axis.title = element_blank(),
         title = element_blank())  +
-  ylim(-0.06, 0.06) +
+  ylim(-0.2, 0.2) +
   xlim(-16.5, 14) +
   
   ggsave( filename="2021-03-17_CHILD_y1_cg05732646_KBTBD6.png",
@@ -1559,7 +1556,7 @@ ggplot(y1_cg22908922_res, aes(x=xresid, y=yresid)) +
         axis.text = element_text(size=12),
         axis.title = element_blank(),
         title = element_blank())  +
-  ylim(-0.1, 0.1) +
+  ylim(-0.2, 0.2) +
   xlim(-16.5, 14) + 
   
   ggsave( filename="2021-03-17_CHILD_y1_cg22908922_PACS2.png",
@@ -1667,7 +1664,7 @@ ggplot(methmean_res, aes(x=xresid, y=yresid)) +
         axis.text = element_text(size=13),
         axis.title = element_blank(),
         title = element_blank())  +
-  ylim(-0.0028, 0.0028) +
+  ylim(-0.2, 0.2) +
   
   ggsave( filename="2021-03-17_CHILD_cb_global_dnam.png",
           path =  here("figures", "linear_regression", "prenatal"),
@@ -1769,7 +1766,7 @@ ggplot(linemeth_res, aes(x=xresid, y=yresid)) +
         axis.text = element_text(size=13),
         axis.title = element_blank(),
         title = element_blank())  +
-  ylim(-0.0028, 0.0028) +
+  ylim(-0.2, 0.2) +
   
   ggsave( filename="2021-03-17_CHILD_cb_LINE_dnam.png",
           path =  here("figures", "linear_regression", "prenatal"),
@@ -1867,6 +1864,11 @@ identical(rownames(goi_order), rownames(prenatal_goi_order)) #true
 #bind
 goi_df <- cbind(prenatal_goi_order, goi_order)
 
+#sort goi df by pvalue
+goi_df_pval <- goi_df %>% arrange(p.value.no2_preg_entire)
+
+write.csv(goi_df_pval[1:50,], file=here("figures", "linear_regression", "prenatal",
+                                 "2021-03-17_goi.csv"))
 
 #check cpgs from gruvieva 2017 paper
 
@@ -1884,6 +1886,9 @@ cg12283362_lm <- lm(cg12283362 ~
                       genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
                       sv1 + sv2 + sv3 + sv4 + sv5 + sv6, 
                     data=covariates_geno_ctpc_tech_cc)
+
+# get lm info
+summary(cg12283362_lm)
 
 #get partial residuals for no2 and dnam 
 cg12283362_res <- partialResid(cg12283362 ~ no2_preg_entire, cg12283362_lm, 
@@ -1907,7 +1912,7 @@ ggplot(cg12283362_res, aes(x=xresid, y=yresid)) +
         axis.text = element_text(size=12),
         axis.title = element_blank(),
         title = element_blank())  +
-  ylim(-0.1, 0.1) +
+  ylim(-0.2, 0.2) +
   
   ggsave( filename="2021-03-17_CHILD_cb12283362_LONP1.png",
           path =  here("figures", "linear_regression", "prenatal"),
@@ -1933,6 +1938,9 @@ cg24172570_lm <- lm(cg24172570 ~
                       sv1 + sv2 + sv3 + sv4 + sv5 + sv6, 
                     data=covariates_geno_ctpc_tech_cc)
 
+# get lm summary
+summary(cg24172570_lm)
+
 #get partial residuals for no2 and dnam 
 cg24172570_res <- partialResid(cg24172570 ~ no2_preg_entire, cg24172570_lm, 
               data=covariates_geno_ctpc_tech_cc)
@@ -1955,7 +1963,7 @@ ggplot(cg24172570_res, aes(x=xresid, y=yresid)) +
         axis.text = element_text(size=12),
         axis.title = element_blank(),
         title = element_blank())  +
-  ylim(-0.1, 0.1) +
+  ylim(-0.2, 0.2) +
   
   ggsave( filename="2021-03-17_CHILD_cg24172570_HIBADH.png",
           path =  here("figures", "linear_regression", "prenatal"),
@@ -2001,7 +2009,7 @@ ggplot(cg08973675_res, aes(x=xresid, y=yresid)) +
         axis.text = element_text(size=12),
         axis.title = element_blank(),
         title = element_blank())  +
-  ylim(-0.1, 0.1) +
+  ylim(-0.2, 0.2) +
   
   ggsave( filename="2021-03-17_CHILD_cg08973675_SLC25A28.png",
           path =  here("figures", "linear_regression", "prenatal"),

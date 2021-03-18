@@ -328,7 +328,7 @@ mod <- model.matrix(~ no2_y1_entire +
                       sex +
                       maternal_smoking_y1 + 
                       maternal_education_length +
-                      pss_6mos + csed_6mos + 
+                      pss_6mos + 
                       genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
                       celltype.PC1 + celltype.PC2 + celltype.PC3 + 
                       celltype.PC4 + celltype.PC5 + celltype.PC6 +
@@ -761,11 +761,11 @@ diff_pvals_tech <- cbind(as.data.frame(diff_ebayes$p.value),
                   as.data.frame(diff_ebayes$annotation))
 
 #rename columns to indicate pvalues vs coefficients 
-colnames(diff_pvals_tech) <- c(paste("pval", colnames(diff_pvals_tech)[1:34],
+colnames(diff_pvals_tech) <- c(paste("pval", colnames(diff_pvals_tech)[1:33],
                                      sep = "_"), 
-                               paste("coeff", colnames(diff_pvals_tech)[35:68], 
+                               paste("coeff", colnames(diff_pvals_tech)[34:66], 
                                      sep = "_"),
-                               colnames(diff_pvals_tech)[69:101])
+                               colnames(diff_pvals_tech)[67:99])
 
 diff_pvals_tech$adj_pval_no2_y1_entire <- p.adjust(diff_pvals_tech$pval_no2_y1_entire, method="BH")
 ```
@@ -807,7 +807,7 @@ ggplot(pval_qq, aes(x=e, y=o)) +
         axis.text.y = element_text(size=5),
         axis.title.x = element_text(size=7),
         axis.title.y = element_text(size=7)) +
-  ylim(0,6)
+  ylim(0,7)
   
   
     ggsave( filename="2021-02-04_CHILD_y1_qqplot.tiff",
@@ -837,7 +837,7 @@ diff_pvals_tech$cpgid <- rownames(diff_pvals_tech)
 
 #volcano plot
 ggplot(diff_pvals_tech, aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_y1_entire)))) +
-  geom_point(alpha=0.4, col = "#508FC2", size=3) +
+  geom_point(alpha=0.4, col = "#254A90", size=3) +
   
   #nominal p value cut off
   geom_hline(yintercept = -log10(0.00001), linetype="dashed", size=0.25) + 
@@ -865,12 +865,12 @@ ggplot(diff_pvals_tech, aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_
   geom_vline(xintercept = c(2.5, -2.5), linetype = "dashed", size=0.25) +
   
   #label significant points
-  ggrepel::geom_text_repel(data=subset(diff_pvals_tech, 
-                         (pval_no2_y1_entire < 0.00001 & db > 0.025) | 
-                           (pval_no2_y1_entire < 0.00001 & db < -0.025)),
-                         mapping=aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_y1_entire)),
-                                     label=cpgid),
-                        size=6) + 
+  # ggrepel::geom_text_repel(data=subset(diff_pvals_tech, 
+  #                       (pval_no2_y1_entire < 0.00001 & db > 0.025) | 
+  #                         (pval_no2_y1_entire < 0.00001 & db < -0.025)),
+  #                       mapping=aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_y1_entire)),
+  #                                   label=cpgid),
+  #                      size=6) + 
   
   scale_x_continuous(breaks=c(-25, -10, -5, 0, 5, 10, 25)) +
   labs(y="-log10(unadjusted p-value)", x = "Effect size (methylation %)") +
@@ -933,16 +933,19 @@ cg19011826_res_fit <- lm(cg19011826_res$yresid ~ cg19011826_res$xresid)
 summary(cg19011826_lm)
 
 ggplot(cg19011826_res, aes(x=xresid, y=yresid)) + 
-  geom_point(alpha=0.8, col = "#75A2D9", size=2) + 
-  stat_smooth(method="lm", se=F, col="black") +
+  geom_point(alpha=0.8, fill = "#254A90", shape=21, size=3) + 
+  stat_smooth(method="lm", se=F, col="red") + 
   theme_bw() +
-  labs(x="Year one NO2 (ppb)", 
-       y=str_wrap("DNA methyaltion (%)",width=40)) +
+  labs(x=bquote("Postnatal" ~NO[2]~ "(ppb) partial residual"), 
+       y="Methylation (%) partial residual") +
+  annotate("text",x=7,y=0.06, label="slope = 0.202", size=4) +
   ggtitle("cg19011826") +
-  theme(panel.border=element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_text(size=14),
-        title = element_text(size=14)) 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=19),
+        axis.title = element_text(size=17),
+        title = element_text(size=20)) +
+  ylim(-0.06, 0.06)
 
 ###################
 # cg07472943 SHC2 #
@@ -977,16 +980,19 @@ cg07472943_res_fit <- lm(cg07472943_res$yresid ~ cg07472943_res$xresid)
 summary(cg07472943_lm)
 
 ggplot(cg07472943_res, aes(x=xresid, y=yresid)) + 
-  geom_point(alpha=0.8, col = "#75A2D9", size=2) + 
-  stat_smooth(method="lm", se=F, col="black") +
+  geom_point(alpha=0.8, fill = "#254A90", shape=21, size=3) + 
+  stat_smooth(method="lm", se=F, col="red") + 
   theme_bw() +
-  labs(x="Year one NO2 (ppb)", 
-       y=str_wrap("DNA methyaltion (%)",width=40)) +
+  labs(x=bquote("Postnatal" ~NO[2]~ "(ppb) partial residual"), 
+       y="Methylation (%) partial residual") +
+  annotate("text",x=7,y=0.06, label="slope = -0.132", size=4) +
   ggtitle("cg07472943") +
-  theme(panel.border=element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_text(size=14),
-        title = element_text(size=14)) 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=19),
+        axis.title = element_text(size=17),
+        title = element_text(size=20)) +
+  ylim(-0.06, 0.06)
 
 ####################
 # cg24353392 CRHR1 #
@@ -1021,17 +1027,19 @@ cg24353392_res_fit <- lm(cg24353392_res$yresid ~ cg24353392_res$xresid)
 summary(cg24353392_lm)
 
 ggplot(cg24353392_res, aes(x=xresid, y=yresid)) + 
-  geom_point(alpha=0.8, col = "#75A2D9", size=2) + 
-  stat_smooth(method="lm", se=F, col="black") +
+  geom_point(alpha=0.8, fill = "#254A90", shape=21, size=3) + 
+  stat_smooth(method="lm", se=F, col="red") + 
   theme_bw() +
-  labs(x="Year one NO2 (ppb)", 
-       y=str_wrap("DNA methyaltion (%)",width=40)) +
+  labs(x=bquote("Postnatal" ~NO[2]~ "(ppb) partial residual"), 
+       y="Methylation (%) partial residual") +
+  annotate("text",x=7,y=0.06, label="slope = -0.136", size=4) +
   ggtitle("cg24353392") +
-  theme(panel.border=element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_text(size=14),
-        title = element_text(size=14)) 
-
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=19),
+        axis.title = element_text(size=17),
+        title = element_text(size=20)) +
+  ylim(-0.06, 0.06)
 
 ####################
 # cg18668679 LONP1 #
@@ -1066,16 +1074,19 @@ cg18668679_res_fit <- lm(cg18668679_res$yresid ~ cg18668679_res$xresid)
 summary(cg18668679_lm)
 
 ggplot(cg18668679_res, aes(x=xresid, y=yresid)) + 
-  geom_point(alpha=0.8, col = "#75A2D9", size=2) + 
-  stat_smooth(method="lm", se=F, col="black") +
+  geom_point(alpha=0.8, fill = "#254A90", shape=21, size=3) + 
+  stat_smooth(method="lm", se=F, col="red") + 
   theme_bw() +
-  labs(x="Year one NO2 (ppb)", 
-       y=str_wrap("DNA methyaltion (%)",width=40)) +
+  labs(x=bquote("Postnatal" ~NO[2]~ "(ppb) partial residual"), 
+       y="Methylation (%) partial residual") +
+  annotate("text",x=7,y=0.06, label="slope = -0.165", size=4) +
   ggtitle("cg18668679") +
-  theme(panel.border=element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_text(size=14),
-        title = element_text(size=14)) 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=19),
+        axis.title = element_text(size=17),
+        title = element_text(size=20)) +
+  ylim(-0.06, 0.06)
 ```
 
 
