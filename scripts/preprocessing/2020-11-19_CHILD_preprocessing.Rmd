@@ -126,7 +126,7 @@ detP_rm <- names(ngoodDetP[ngoodDetP==FALSE])
 ```
 
 
-Get names of probes with less than 3 besa
+Get names of probes with less than 3 beads
 ```{r beads}
 #using wateRmelon
 #get bead count
