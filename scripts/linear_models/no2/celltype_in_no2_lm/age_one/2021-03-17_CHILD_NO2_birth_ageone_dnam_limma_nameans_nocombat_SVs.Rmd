@@ -931,13 +931,33 @@ ggplot(cg07472943_res, aes(x=xresid, y=yresid)) +
          path =  here("figures", "linear_regression", "yearone"),
          width = 3.1, height = 2.6, units = "in")
 
+# normal plot
+ggplot(covariates_geno_ctpcs_tech_cc,
+       aes(x=no2_y1_entire, 
+           y=cg07472943)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=12),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-03-28_CHILD_cg07472943_SHC2.png",
+         path =  here("figures", "linear_regression", "yearone"),
+         width = 3.1, height = 2.6, units = "in")
+
+# correlation 
+cor(covariates_geno_ctpcs_tech_cc$cg07472943, 
+    covariates_geno_ctpcs_tech_cc$no2_y1_entire,
+    method="pearson") # -0.1948573
+
 
 ####################
 # cg24353392 CRHR1 #
 ####################
 
 # add dnam values to covariate dataframe
-covariates_geno_ctpcs_tech_cc$cg24353392 <- diff_betas_geno_cc_cpr[rownames(diff_betas_geno_cc_cpr)=="cg24353392", ]
+covariates_geno_ctpcs_tech_cc$cg24353392 <- 
+  diff_betas_geno_cc_cpr[rownames(diff_betas_geno_cc_cpr)=="cg24353392", ]
 
 # linear regression for partial resids
 cg24353392_lm <- lm(cg24353392 ~ no2_y1_entire + sex + pss_6mos +   
@@ -979,6 +999,25 @@ ggplot(cg24353392_res, aes(x=xresid, y=yresid)) +
   ggsave(filename="2021-03-17_CHILD_y1_cg24353392_CRHR1.png",
          path =  here("figures", "linear_regression", "yearone"),
          width = 3.1, height = 2.6, units = "in")
+
+# normal plot
+ggplot(covariates_geno_ctpcs_tech_cc,
+       aes(x=no2_y1_entire, 
+           y=cg24353392)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=12),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-03-28_CHILD_cg24353392_CRHR1.png",
+         path =  here("figures", "linear_regression", "yearone"),
+         width = 3.1, height = 2.6, units = "in")
+
+# correlation 
+cor(covariates_geno_ctpcs_tech_cc$cg24353392, 
+    covariates_geno_ctpcs_tech_cc$no2_y1_entire,
+    method="pearson") # -0.1039938
 
 
 ####################
@@ -1028,6 +1067,25 @@ geom_point(alpha=0.6, col = "#254A90", size=2) +
   ggsave(filename="2021-03-17_CHILD_y1_cg18668679_LONP1.png",
          path =  here("figures", "linear_regression", "yearone"),
          width = 3.1, height = 2.6, units = "in")
+
+# normal plot
+ggplot(covariates_geno_ctpcs_tech_cc,
+       aes(x=no2_y1_entire, 
+           y=cg18668679)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=12),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-03-28_CHILD_cg18668679_LONP1.png",
+         path =  here("figures", "linear_regression", "yearone"),
+         width = 3.1, height = 2.6, units = "in")
+
+# correlation 
+cor(covariates_geno_ctpcs_tech_cc$cg18668679, 
+    covariates_geno_ctpcs_tech_cc$no2_y1_entire,
+    method="pearson") # -0.3499418
 ```
 
 
@@ -1044,12 +1102,20 @@ These genes are related to the proposed pathway of air pollution action or have 
 #TNFA is TNF
 goi <- annotation[grep("RNF39|CYP2E1|LONP1|HIBADH|SLC25A28|PLVAP|GPR55|^CAT$|TPO|NFKB1|^NOX2|SOD1|TRX1|TRX2|GSTP1|^MT3|NQO1|HMOX1|GPX1|DDH1|^NOS2|CYP2C11|CYP7B|ALOX12$|ALOX5|^NRF2$|KEAP1|AHR$|^ARNT;|GCLC|GCLM|GSR1|SLC7A11|GPC2|GSTA1|GSTA2|GSTA3|GSTA5|GSTM1|GSTM2|GSTM3|TXN$|TXNRD1$|SRXN1|G6PD|CYP1A1|IL1A|^IL2$|^IL3$|^IL4.*IL4$|^IL5$|^IL6$|IL9$|IL10$|IL12A|IL13|IL15$|IL17A|IL18$|IL19|IL21$|IL22$|IL23A$|IL25$|IL27$|IL31$|IL33$|IFNG$|^TNF$|TGFB1$|FOXP3|FTH1", annotation$UCSC_RefGene_Name), ]
 
+
+goi <- as.data.frame(goi)
+unique(goi$UCSC_RefGene_Name)
+
+# remove pvlap
+goi$row <- c(1:nrow(goi))
+goi_sub <- goi[-c(902:915), ]
+unique(goi_sub$UCSC_RefGene_Name)
 #transpose betas
 diff_betas_geno_cc_cpr_t <- t(diff_betas_geno_cc_cpr)
 
 #apply function for calculating significance of associations using mice and imputed covariate data
 yearone_goi_list <- 
-  pbapply(diff_betas_geno_cc_cpr_t [,colnames(diff_betas_geno_cc_cpr_t ) %in% rownames(goi)], 2, function(x) {
+  pbapply(diff_betas_geno_cc_cpr_t [,colnames(diff_betas_geno_cc_cpr_t ) %in% rownames(goi_sub)], 2, function(x) {
   
   combined <- cbind(covariates_geno_ctpcs_tech_cc, x)
   
@@ -1128,6 +1194,107 @@ yearone_goi_df_pval <- yearone_goi_df  %>% arrange(p.value.no2_y1_entire)
 write.csv(yearone_goi_df_pval[1:10,], 
           here("figures", "linear_regression",
                "yearone", "2021-03-18_yearone_goi.csv"))
+
+
+
+
+##################
+#LONP1 cg12283362#
+##################
+
+covariates_geno_ctpcs_tech_cc$cg12283362 <- 
+  diff_betas_geno_cc_cpr[rownames(diff_betas_geno_cc_cpr)=="cg12283362", ] 
+
+cg12283362_lm <- lm(cg12283362 ~ 
+                      no2_y1_entire + sex + pss_6mos +
+                      maternal_smoking_y1 + maternal_education_length +
+                      celltype.PC1 + celltype.PC2 + celltype.PC3 + celltype.PC4 + 
+                      celltype.PC5 + celltype.PC6 + celltype.PC7 + celltype.PC8 +
+                      celltype.PC9 + genotyping.PC1 + genotyping.PC2 + genotyping.PC3 +
+                      sv1 + sv2 + sv3 + sv4 + sv5 + sv6 + sv7 + sv8 + sv9 + sv10 + 
+                      sv11 + sv12 + sv13 + sv14 + sv15, 
+                    data=covariates_geno_ctpcs_tech_cc)
+
+# get lm info
+summary(cg12283362_lm)
+
+#get partial residuals for no2 and dnam 
+cg12283362_res <- partialResid(cg12283362 ~ no2_preg_entire, cg12283362_lm, 
+              data=covariates_geno_ctpc_tech_cc)
+
+#fit again to get r2
+cg12283362_res_fit <- lm(cg12283362_res$yresid ~ cg12283362_res$xresid)
+
+summary(cg12283362_res_fit)
+
+ggplot(cg12283362_res, aes(x=xresid, y=yresid)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+#  labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
+#       y="Methylation (%) partial residual") +
+#  annotate("text",x=7,y=0.06, label="slope = -0.377", size=4) +
+#  ggtitle("cg12228123") +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=12),
+        axis.title = element_blank(),
+        title = element_blank())  +
+  ylim(-0.2, 0.2) +
+  
+  ggsave( filename="2021-03-17_CHILD_cb12283362_LONP1.png",
+          path =  here("figures", "linear_regression", "prenatal"),
+          width = 3.1,
+          height = 2.6,
+          units = "in")
+
+# normal plot
+ggplot(covariates_geno_ctpcs_tech_cc,
+       aes(x=no2_y1_entire, 
+           y=cg12283362)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=12),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-03-28_CHILD_y1_cg12283362_LONP1.png",
+         path =  here("figures", "linear_regression", "yearone"),
+         width = 4.8, height = 3.2, units = "in")
+
+# correlation 
+cor(covariates_geno_ctpcs_tech_cc$cg12283362, 
+    covariates_geno_ctpcs_tech_cc$no2_y1_entire,
+    method="pearson") # -0.004003465
+
+
+
+#####################
+#SLC25A28 cg08973675#
+#####################
+
+covariates_geno_ctpcs_tech_cc$cg08973675 <- 
+  diff_betas_geno_cc_cpr[rownames(diff_betas_geno_cc_cpr)=="cg08973675", ] 
+
+# normal plot
+ggplot(covariates_geno_ctpcs_tech_cc,
+       aes(x=no2_y1_entire, 
+           y=cg08973675)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=12),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-03-28_CHILD_y1_cg08973675_SLC25A28.png",
+         path =  here("figures", "linear_regression", "yearone"),
+         width = 4.8, height = 3.2, units = "in")
+
+# correlation 
+cor(covariates_geno_ctpcs_tech_cc$cg08973675, 
+    covariates_geno_ctpcs_tech_cc$no2_y1_entire,
+    method="pearson") # -0.03784814
+```
 ```
 
 
@@ -1178,6 +1345,27 @@ ggplot(methmean_res, aes(x=xresid, y=yresid)) +
   ggsave(filename="2021-03-17_CHILD_y1_global_dnam.png",
          path =  here("figures", "linear_regression", "yearone"),
          width = 4.8, height = 3.2, units = "in")
+
+
+
+# normal plot
+ggplot(covariates_geno_ctpcs_tech_cc,
+       aes(x=no2_y1_entire, 
+           y=methmeans)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=12),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-03-28_CHILD_y1_global_dnam.png",
+         path =  here("figures", "linear_regression", "yearone"),
+         width = 4.8, height = 3.2, units = "in")
+
+# correlation 
+cor(covariates_geno_ctpcs_tech_cc$methmeans, 
+    covariates_geno_ctpcs_tech_cc$no2_y1_entire,
+    method="pearson") # -0.05846253
 ```
 
 
@@ -1241,6 +1429,27 @@ ggplot(linemeth_res, aes(x=xresid, y=yresid)) +
   ggsave(filename="2021-03-17_CHILD_y1_LINE_dnam.png",
          path =  here("figures", "linear_regression", "yearone"),
          width = 4.8, height = 3.2, units = "in")
+
+
+
+# normal plot
+ggplot(covariates_geno_ctpcs_tech_cc,
+       aes(x=no2_y1_entire, 
+           y=linemeth)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=12),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-03-28_CHILD_y1_LINE_dnam.png",
+         path =  here("figures", "linear_regression", "yearone"),
+         width = 4.8, height = 3.2, units = "in")
+
+# correlation 
+cor(covariates_geno_ctpcs_tech_cc$linemeth, 
+    covariates_geno_ctpcs_tech_cc$no2_y1_entire,
+    method="pearson") # -0.05234149
 ```
 
 

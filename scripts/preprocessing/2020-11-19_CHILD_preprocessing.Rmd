@@ -51,6 +51,7 @@ sample_sheet$Basename <- paste("R:/Jones/Projects/CHILD/CHILD raw data",
 rgset <- read.metharray.exp(targets = sample_sheet, verbose=TRUE, extended = TRUE)
 ```
 
+
 Assess quality of bisulfite conversion by examining probe intensities.
 ```{r bs_conversion_qc}
 #type I probes
@@ -506,7 +507,6 @@ dim(bmiq_clean_nodups)
 min(bmiq_clean_nodups)
 max(bmiq_clean_nodups)
 ```
-
 
 
 Rename processed dnam data

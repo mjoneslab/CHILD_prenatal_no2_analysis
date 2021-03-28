@@ -556,7 +556,7 @@ corrsub <- corr[,127:140]
 ggcorrplot(corr=corrsub,
            #p.mat=pval,
            #insig = "blank",
-           type = "lower", 
+           #type = "lower", 
            #lab=TRUE,
            #lab_size = 2,
            tl.cex =6, 
@@ -868,16 +868,16 @@ ggplot(covariates_geno_ctpc_tech_cc,
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=18),
+        axis.text = element_text(size=12),
         axis.title = element_blank()) +
-  ggsave(filename="2021-03-23_CHILD_cb_cg05732646_KBTBD6_poster.png",
+  ggsave(filename="2021-03-28_CHILD_cb_cg05732646_KBTBD6.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 12, height = 8.15, units = "cm")
+         width = 3, height = 2.1, units = "in")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc$cb_cg05732646, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson")
+    method="pearson") #-0.359306
 
 
 ####################
@@ -935,17 +935,17 @@ ggplot(covariates_geno_ctpc_tech_cc,
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=18),
+        axis.text = element_text(size=12),
         axis.title = element_blank()) +
   ylim(0.5, 0.9) +
-  ggsave(filename="2021-03-23_CHILD_cb_cb_cg22908922_PACS2_poster.png",
+  ggsave(filename="2021-03-28_CHILD_cb_cb_cg22908922_PACS2.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 12, height = 8.15, units = "cm")
+         width = 3, height = 2.1, units = "in")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc$cb_cg22908922, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson")
+    method="pearson") #-0.1372331
 
 #############################
 # AFAP1/LOC84740 cg12228123 #
@@ -1003,17 +1003,17 @@ ggplot(covariates_geno_ctpc_tech_cc,
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=18),
+        axis.text = element_text(size=12),
         axis.title = element_blank()) +
      ylim(0.5, 0.99) +
-  ggsave(filename="2021-03-23_CHILD_cb_cg12228123_AFAP1_poster.png",
+  ggsave(filename="2021-03-28_CHILD_cb_cg12228123_AFAP1.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 12, height = 8.15, units = "cm")
+         width = 3, height = 2.1, units = "in")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc$cb_cg12228123, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson")
+    method="pearson") # -0.3968392
 
 ```
 
@@ -1568,16 +1568,16 @@ ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=18),
+        axis.text = element_text(size=12),
         axis.title = element_blank()) +
-  ggsave(filename="2021-03-23_CHILD_y1_cg05732646_KBTBD6_poster.png",
+  ggsave(filename="2021-03-28_CHILD_y1_cg05732646_KBTBD6.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 12, height = 8.15, units = "cm")
+         width = 3, height = 2.1, units = "in")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc_y1_sub$y1_cg05732646, 
     covariates_geno_ctpc_tech_cc_y1_sub$no2_preg_entire,
-    method="pearson")
+    method="pearson") #-0.1129506
 
 ####################
 # PACS2 cg22908922 #
@@ -1637,17 +1637,17 @@ ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=18),
+        axis.text = element_text(size=12),
         axis.title = element_blank()) +
     ylim(0.5, 0.9) +
-  ggsave(filename="2021-03-23_CHILD_y1_cg22908922_PACS2_poster.png",
+  ggsave(filename="2021-03-28_CHILD_y1_cg22908922_PACS2.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 12, height = 8.15, units = "cm")
+         width = 3, height = 2.1, units = "in")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc_y1_sub$y1_cg22908922, 
     covariates_geno_ctpc_tech_cc_y1_sub$no2_preg_entire,
-    method="pearson")
+    method="pearson") #-0.263054
 
 
 #############################
@@ -1695,7 +1695,7 @@ ggplot(y1_cg12228123_res, aes(x=xresid, y=yresid)) +
         title = element_blank())  +
   ylim(-0.2, 0.2) +
   xlim(-16.5, 14) +
-  ggsave( filename="2021-03-17_CHILD_y1_cg12228123_AFAP.png",
+  ggsave( filename="2021-03-28_CHILD_y1_cg12228123_AFAP.png",
           path =  here("figures", "linear_regression", "prenatal"),
           width = 3, height = 2.1, units = "in")
 
@@ -1710,14 +1710,14 @@ ggplot(y1_cg12228123_res, aes(x=xresid, y=yresid)) +
   #annotate("text",x=7,y=0.06, label="slope = -0.0982", size=4) +
   #ggtitle("cg05732646") +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=20),
+        axis.text = element_text(size=18),
         axis.title = element_blank(),
         title = element_blank()) +
   ylim(-0.2, 0.2) +
   xlim(-16.5, 16) +
-  ggsave(filename="2021-03-17_CHILD_y1_AFAP1_poster.png",
+  ggsave(filename="2021-03-28_CHILD_y1_AFAP1.png",
           path =  here("figures", "linear_regression", "prenatal"),
-          width = 12, height = 8.15, units = "cm")
+          width = 3, height = 2.1, units = "in")
 
 
 # normal plot
@@ -1728,17 +1728,17 @@ ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=18),
+        axis.text = element_text(size=12),
         axis.title = element_blank()) +
     ylim(0.5, 0.99) +
-  ggsave(filename="2021-03-23_CHILD_y1_cg12228123_AFAP1_poster.png",
+  ggsave(filename="2021-03-28_CHILD_y1_cg12228123_AFAP1.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 12, height = 8.15, units = "cm")
+         width = 3, height = 2.1, units = "in")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc_y1_sub$y1_cg12228123, 
     covariates_geno_ctpc_tech_cc_y1_sub$no2_preg_entire,
-    method="pearson")
+    method="pearson") # -0.1963824
 
 
 ```
@@ -1795,6 +1795,29 @@ ggplot(methmean_res, aes(x=xresid, y=yresid)) +
           width = 4.8,
           height = 3.2,
           units = "in")
+
+
+# normal plot
+ggplot(covariates_geno_ctpc_tech_cc,
+       aes(x=no2_preg_entire, 
+           y=methmeans)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=14),
+        axis.title = element_blank()) +
+    ylim(0.48, 0.54) +
+  ggsave(filename="2021-03-28_CHILD_cb_global_dnam.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 3.2, units = "in")
+
+
+# correlation 
+cor(covariates_geno_ctpc_tech_cc$methmeans, 
+    covariates_geno_ctpc_tech_cc$no2_preg_entire,
+    method="pearson") # 0.1037103
+
 ```
 
 
@@ -1896,7 +1919,30 @@ ggplot(linemeth_res, aes(x=xresid, y=yresid)) +
           path =  here("figures", "linear_regression", "prenatal"),
           width = 4.8,
           height = 3.2,
-          units = "in")
+          units = "in")0
+
+
+# normal plot
+ggplot(covariates_geno_ctpc_tech_cc,
+       aes(x=no2_preg_entire, 
+           y=linemeth)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=14),
+        axis.title = element_blank()) +
+    ylim(0.48, 0.54) +
+  ggsave(filename="2021-03-28_CHILD_cb_LINE_dnam.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 3.2, units = "in")
+
+
+# correlation 
+cor(covariates_geno_ctpc_tech_cc$linemeth, 
+    covariates_geno_ctpc_tech_cc$no2_preg_entire,
+    method="pearson") # 0.0976405
+
 ```
 
 
@@ -1908,7 +1954,16 @@ These genes are related to the proposed pathway of air pollution action or have 
 #FHC is FTH1 (ferritin heavy chain 1)
 #nothing maps to FOXP3
 #TNFA is TNF
-goi <- annotation[grep("RNF39|CYP2E1|LONP1|HIBADH|SLC25A28|PLVAP|GPR55|^CAT$|TPO|NFKB1|^NOX2|SOD1|TRX1|TRX2|GSTP1|^MT3|NQO1|HMOX1|GPX1|DDH1|^NOS2|CYP2C11|CYP7B|ALOX12$|ALOX5|^NRF2$|KEAP1|AHR$|^ARNT;|GCLC|GCLM|GSR1|SLC7A11|GPC2|GSTA1|GSTA2|GSTA3|GSTA5|GSTM1|GSTM2|GSTM3|TXN$|TXNRD1$|SRXN1|G6PD|CYP1A1|IL1A|^IL2$|^IL3$|^IL4.*IL4$|^IL5$|^IL6$|IL9$|IL10$|IL12A|IL13|IL15$|IL17A|IL18$|IL19|IL21$|IL22$|IL23A$|IL25$|IL27$|IL31$|IL33$|IFNG$|^TNF$|TGFB1$|FOXP3|FTH1", annotation$UCSC_RefGene_Name), ]
+goi <- annotation[grep("RNF39|CYP2E1|LONP1|HIBADH|SLC25A28|PLVAP|^GPR55$|^CAT$|TPO|NFKB1|^NOX2|SOD1|TRX1|TRX2|GSTP1|^MT3|NQO1|HMOX1|GPX1|DDH1|^NOS2|CYP2C11|CYP7B|^ALOX12$|^ALOX5|^NRF2$|KEAP1|AHR$|^ARNT;|GCLC|GCLM|GSR1|SLC7A11|GPC2|GSTA1|GSTA2|GSTA3|GSTA5|GSTM1|GSTM2|GSTM3|TXN$|TXNRD1$|SRXN1|G6PD|CYP1A1|IL1A|^IL2$|^IL3$|^IL4.*IL4$|^IL5$|^IL6$|IL9$|IL10$|IL12A|IL13|IL15$|IL17A|IL18$|IL19|IL21$|IL22$|IL23A$|IL25$|IL27$|IL31$|IL33$|IFNG$|^TNF$|TGFB1$|FOXP3|FTH1", annotation$UCSC_RefGene_Name), ]
+
+goi <- as.data.frame(goi)
+unique(goi$UCSC_RefGene_Name)
+
+# remove pvlap
+goi$row <- c(1:nrow(goi))
+goi_sub <- goi[-c(902:915), ]
+unique(goi_sub$UCSC_RefGene_Name)
+
 
 
 cb_betas_geno_cc_clean_t <- t(cb_betas_geno_cc_clean)
@@ -1916,7 +1971,7 @@ cb_betas_geno_cc_clean_t <- t(cb_betas_geno_cc_clean)
 
 #apply function for calculating significance of associations using mice and imputed covariate data
 prenatal_goi_list <- 
-  pbapply(cb_betas_geno_cc_clean_t[,colnames(cb_betas_geno_cc_clean_t ) %in% rownames(goi)], 2, function(x) {
+  pbapply(cb_betas_geno_cc_clean_t[,colnames(cb_betas_geno_cc_clean_t ) %in% rownames(goi_sub)], 2, function(x) {
   
   combined <- cbind(covariates_geno_ctpc_tech_cc, x)
   
@@ -1992,7 +2047,7 @@ goi_df <- cbind(prenatal_goi_order, goi_order)
 goi_df_pval <- goi_df %>% arrange(p.value.no2_preg_entire)
 
 write.csv(goi_df_pval[1:50,], file=here("figures", "linear_regression", "prenatal",
-                                 "2021-03-17_goi.csv"))
+                                 "2021-03-128_goi.csv"))
 
 #check cpgs from gruvieva 2017 paper
 
@@ -2044,56 +2099,25 @@ ggplot(cg12283362_res, aes(x=xresid, y=yresid)) +
           height = 2.6,
           units = "in")
 
-
-###############################
-#cg24172570 upstream of HIBADH#
-###############################
-
-# this cpg is not in goi_df since it's not mapped to a gene
-
-covariates_geno_ctpc_tech_cc$cg24172570 <- 
-  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg24172570", ] 
-
-cg24172570_lm <- lm(cg24172570 ~ 
-                      no2_preg_entire + sex + gestational_days + pss_18wk + 
-                      prenatal_maternal_smoking + maternal_education_length + 
-                      cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
-                      genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
-                      sv1 + sv2 + sv3 + sv4 + sv5 + sv6, 
-                    data=covariates_geno_ctpc_tech_cc)
-
-# get lm summary
-summary(cg24172570_lm)
-
-#get partial residuals for no2 and dnam 
-cg24172570_res <- partialResid(cg24172570 ~ no2_preg_entire, cg24172570_lm, 
-              data=covariates_geno_ctpc_tech_cc)
-
-#fit again to get r2
-cg24172570_res_fit <- lm(cg24172570_res$yresid ~ cg24172570_res$xresid)
-
-summary(cg24172570_lm)
-
-ggplot(cg24172570_res, aes(x=xresid, y=yresid)) +
+# normal plot
+ggplot(covariates_geno_ctpc_tech_cc,
+       aes(x=no2_preg_entire, 
+           y=cg12283362)) + 
   geom_point(alpha=0.6, col = "#254A90", size=2) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
   theme_bw() +
-#  labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
-#       y="Methylation (%) partial residual") +
-#  annotate("text",x=7,y=0.06, label="slope = -0.377", size=4) +
-#  ggtitle("cg12228123") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
+  theme(panel.grid = element_blank(),
         axis.text = element_text(size=12),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  
-  ggsave( filename="2021-03-17_CHILD_cg24172570_HIBADH.png",
-          path =  here("figures", "linear_regression", "prenatal"),
-          width = 3.1,
-          height = 2.6,
-          units = "in")
+        axis.title = element_blank()) +
+  ggsave(filename="2021-03-28_CHILD_cg12283362_LONP1.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 3.2, units = "in")
+
+# correlation 
+cor(covariates_geno_ctpc_tech_cc$cg12283362, 
+    covariates_geno_ctpc_tech_cc$no2_preg_entire,
+    method="pearson") # -0.00695959
+
 
 
 #####################
@@ -2140,10 +2164,27 @@ ggplot(cg08973675_res, aes(x=xresid, y=yresid)) +
           width = 3.1,
           height = 2.6,
           units = "in")
+
+
+# normal plot
+ggplot(covariates_geno_ctpc_tech_cc,
+       aes(x=no2_preg_entire, 
+           y=cg08973675)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=12),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-03-28_CHILD_cg08973675_SLC25A28.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 3.2, units = "in")
+
+# correlation 
+cor(covariates_geno_ctpc_tech_cc$cg08973675, 
+    covariates_geno_ctpc_tech_cc$no2_preg_entire,
+    method="pearson") # 0.03576155
 ```
-
-
-
 
 
 Try re-running limma with birth month/ interaction between birth month and air pollution.

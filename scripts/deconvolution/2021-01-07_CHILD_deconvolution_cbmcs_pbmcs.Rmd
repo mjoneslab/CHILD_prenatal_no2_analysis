@@ -575,10 +575,11 @@ child_fscbc_ecc2_cb <- estimateCellCounts2probes(cb_rgset,
                             referenceset = "FlowSorted.CordBloodCombined.450k",
                             returnAll = FALSE) 
 
+# add in line for renaming outputted probes
 
 #year 1 PBMCs with cordblood reference set
 #dont include granulocytes or nRBCs since neither are expected in year 1 PBMCs
-child_fscbc_ecc2_y1 <- estimateCellCounts2(y1_rgset, 
+child_fscbc_ecc2_y1 <- estimateCellCounts2probes(y1_rgset, 
                             compositeCellType = "CordBlood",
                             processMethod = "preprocessNoob",
                             cellTypes = c("CD4T","NK", "Bcell","Mono","CD8T"), 
