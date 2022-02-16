@@ -108,11 +108,11 @@ ggplot(child_fscbcany_fscbcboth_wide,
   labs(x="CordBloodCombined.450k 'any'", y = "CordBloodCombined.450k 'both'") +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=8),
-        axis.text.y = element_text(size=8),
-        axis.title.x = element_text(size=9),
-        axis.title.y = element_text(size=9),
-        strip.text.x = element_text(size = 8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank()) +
   
@@ -152,31 +152,29 @@ child_fscbc_fscbcidol_wide <- spread(child_fscbc_fscbcidol, method, percentage )
 
 ggplot(child_fscbc_fscbcidol_wide, aes(x=FlowSorted.CordBloodCombined.450k.any,
                                         y=FlowSorted.CordBloodCombined.450k.IDOL)) +
-  geom_point(aes(col=celltype), size=1) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
-  geom_abline(intercept=0,slope=1) +
+  geom_abline(intercept=0,slope=1, linetype="solid") +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(x="CordBloodCombined.450k 'any'", y = "CordBloodCombined.450k 'IDOL'") +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_cb_fscbcidol_fscbcany.tiff",
-    device = "tiff",
-    path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
-    limitsize = TRUE)
+  ggsave(filename="2021-04-26_CHILD_cb_fscbcidol_fscbcany.png",    
+         path =  here("figures", "deconvolution"),
+         width = 3,
+         height = 2.5,
+         units = "in",
+         limitsize = TRUE)
 ```
 
 Compare cell type deconvolution of cordblood using FlowSorted.CordBloodCombined.450k (with estimateCellCounts2 and both probes) and FlowSorted.CordBloodCombined.450k (using estimateCellCounts2 and "IDOL" probes). 
@@ -206,7 +204,7 @@ child_fscbcboth_fscbcidol_wide <- spread(child_fscbcboth_fscbcidol, method, perc
 
 ggplot(child_fscbcboth_fscbcidol_wide, aes(x=FlowSorted.CordBloodCombined.450k.both,
                                         y=FlowSorted.CordBloodCombined.450k.IDOL)) +
-  geom_point(aes(col=celltype), size=1) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
@@ -215,22 +213,20 @@ ggplot(child_fscbcboth_fscbcidol_wide, aes(x=FlowSorted.CordBloodCombined.450k.b
   labs(x="CordBloodCombined.450k 'both'", y = "CordBloodCombined.450k 'IDOL'") +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_cb_fscbcidol_fscbcboth.tiff",
-    device = "tiff",
-    path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
-    limitsize = TRUE)
+  ggsave(filename="2021-04-26_CHILD_cb_fscbcidol_fscbcboth.png",
+         path =  here("figures", "deconvolution"),
+         width = 8,
+         height = 6.5,
+         units = "cm",
+         limitsize = TRUE)
 ```
 
 
@@ -308,31 +304,30 @@ child_y1_fscbcany_fscbcboth_wide <- spread(child_y1_fscbcany_fscbcboth, method, 
 
 ggplot(child_y1_fscbcany_fscbcboth_wide, aes(x=FlowSorted.CordBloodCombined.450k.any,
                                         y=FlowSorted.CordBloodCombined.450k.both)) +
-  geom_point(aes(col=celltype), size=1) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(x="CordBloodCombined.450k 'any'", y = "CordBloodCombined.450k 'both'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_y1_fscbcany_fscbcboth.tiff",
-    device = "tiff",
-    path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
-    limitsize = TRUE)
+  ggsave(filename="2021-04-26_CHILD_y1_fscbcany_fscbcboth.png",
+         path =  here("figures", "deconvolution"),
+         width = 8,
+         height = 6.5,
+         units = "cm",
+         limitsize = TRUE)
 ```
 
 
@@ -351,43 +346,48 @@ child_fscbc_ecc2_y1_any_df$method <- "FlowSorted.CordBloodCombined.450k.any"
 
 
 #convert dataframes to long format for facetting 
-child_fscbc_ecc2_y1_any_df_long <- gather(child_fscbc_ecc2_y1_any_df, celltype, percentage, CD4T:CD8T)
-child_fscbc_ecc2_y1_idol_df_long <- gather(child_fscbc_ecc2_y1_idol_df, celltype, percentage, CD4T:CD8T)
+child_fscbc_ecc2_y1_any_df_long <- gather(child_fscbc_ecc2_y1_any_df, 
+                                          celltype, percentage, CD4T:CD8T)
+child_fscbc_ecc2_y1_idol_df_long <- gather(child_fscbc_ecc2_y1_idol_df, 
+                                           celltype, percentage, CD4T:CD8T)
 
 #row bind two methods together
-child_y1_fscbcany_fscbcidol <- rbind(child_fscbc_ecc2_y1_any_df_long, child_fscbc_ecc2_y1_idol_df_long) 
+child_y1_fscbcany_fscbcidol <- rbind(child_fscbc_ecc2_y1_any_df_long, 
+                                     child_fscbc_ecc2_y1_idol_df_long) 
 
 #spread according to method
-child_y1_fscbcany_fscbcidol_wide <- spread(child_y1_fscbcany_fscbcidol, method, percentage)
+child_y1_fscbcany_fscbcidol_wide <- spread(child_y1_fscbcany_fscbcidol,
+                                           method, 
+                                           percentage)
 
 
 ggplot(child_y1_fscbcany_fscbcidol_wide, aes(x=FlowSorted.CordBloodCombined.450k.any,
                                         y=FlowSorted.CordBloodCombined.450k.IDOL)) +
-  geom_point(aes(col=celltype), size=1) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(x="CordBloodCombined 'any'", y = "CordBloodCombined 'IDOL'") +
+    scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  theme_bw() +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_y1_fscbcany_fscbcidol.tiff",
-    device = "tiff",
-    path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
-    limitsize = TRUE)
+  ggsave(filename="2021-04-26_CHILD_y1_fscbcany_fscbcidol.png",
+         path =  here("figures", "deconvolution"),
+         width = 8,
+         height = 6.5,
+         units = "cm",
+         limitsize = TRUE)
 ```
 
 
@@ -415,36 +415,37 @@ child_y1_fscbcidol_fscbcboth <- rbind(child_fscbc_ecc2_y1_idol_df_long,
                                 child_fscbc_ecc2_y1_both_df_long) 
 
 #spread according to method
-child_y1_fscbcidol_fscbcboth_wide <- spread(child_y1_fscbcidol_fscbcboth, method, percentage )
+child_y1_fscbcidol_fscbcboth_wide <- spread(child_y1_fscbcidol_fscbcboth,
+                                            method, 
+                                            percentage)
 
 
 ggplot(child_y1_fscbcidol_fscbcboth_wide, aes(x=FlowSorted.CordBloodCombined.both,
                                         y=FlowSorted.CordBloodCombined.IDOL)) +
-  geom_point(aes(col=celltype), size=1) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(x="CordBloodCombined.450k 'both'", y = "CordBloodCombined.450k 'IDOL'") +
+    scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_y1_fscbcboth_fscbidol.tiff",
-    device = "tiff",
-    path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
-    limitsize = TRUE)
+  ggsave(filename="2021-01-20_CHILD_y1_fscbcboth_fscbidol.png",
+         path =  here("figures", "deconvolution"),
+         width = 8,
+         height = 6.5,
+         units = "cm",
+         limitsize = TRUE)
 ```
 
 
@@ -471,36 +472,36 @@ child_fsbepic_ecc2_y1_both_df_long <- gather(child_fsbepic_ecc2_y1_both_df,
 child_y1_fsbepicboth_fsbepicany <- rbind(child_fsbepic_ecc2_y1_any_df_long, child_fsbepic_ecc2_y1_both_df_long) 
 
 #spread according to method
-child_y1_fsbepicboth_fsbepicany_wide <- spread(child_y1_fsbepicboth_fsbepicany, method, percentage)
+child_y1_fsbepicboth_fsbepicany_wide <- spread(child_y1_fsbepicboth_fsbepicany, 
+                                               method, 
+                                               percentage)
 
 
 ggplot(child_y1_fsbepicboth_fsbepicany_wide, aes(y=FlowSorted.Blood.EPIC.both,
                                         x=FlowSorted.Blood.EPIC.any)) +
- geom_point(aes(col=celltype), size=1) +
+ geom_point(aes(col=celltype), size=1, alpha = 0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(y="Blood.EPIC 'both'", x = "Blood.EPIC 'any'") +
+    scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank()) +
+        panel.grid = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_y1_fsbepicboth_fsbepicany.tiff",
-    device = "tiff",
-    path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
-    limitsize = TRUE)
+  ggsave(filename="2021-01-20_CHILD_y1_fsbepicboth_fsbepicany.png",
+         path =  here("figures", "deconvolution"),
+         width = 8,
+         height = 6.5,
+         units = "cm",
+         limitsize = TRUE)
 ```
 
 
@@ -518,43 +519,45 @@ child_fsbepic_ecc2_y1_idol_df$sampleid <- y1_pdata$SampleID
 child_fsbepic_ecc2_y1_idol_df$method <- "FlowSorted.Blood.EPIC.IDOL"
 
 #convert dataframes to long format for facetting 
-child_fsbepic_ecc2_y1_both_df_long <- gather(child_fsbepic_ecc2_y1_both_df, celltype, percentage, NK:Mono)
-child_fsbepic_ecc2_y1_idol_df_long <- gather(child_fsbepic_ecc2_y1_idol_df, celltype, percentage, NK:Mono)
+child_fsbepic_ecc2_y1_both_df_long <- gather(child_fsbepic_ecc2_y1_both_df, 
+                                             celltype, percentage, NK:Mono)
+child_fsbepic_ecc2_y1_idol_df_long <- gather(child_fsbepic_ecc2_y1_idol_df, 
+                                             celltype, percentage, NK:Mono)
 
 #row bind two methods together
-child_y1_fsbepicboth_fsbepicidol <- rbind(child_fsbepic_ecc2_y1_both_df_long, child_fsbepic_ecc2_y1_idol_df_long) 
+child_y1_fsbepicboth_fsbepicidol <- rbind(child_fsbepic_ecc2_y1_both_df_long,
+                                          child_fsbepic_ecc2_y1_idol_df_long) 
 
 #spread according to method
-child_y1_fsbepicboth_fsbepicidol_wide <- spread(child_y1_fsbepicboth_fsbepicidol, method, percentage)
+child_y1_fsbepicboth_fsbepicidol_wide <- 
+  spread(child_y1_fsbepicboth_fsbepicidol, method, percentage)
 
 
 ggplot(child_y1_fsbepicboth_fsbepicidol_wide, aes(x=FlowSorted.Blood.EPIC.both,
                                         y=FlowSorted.Blood.EPIC.IDOL)) +
-  geom_point(aes(col=celltype), size=1) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(x="Blood.EPIC 'both'", y = "Blood.EPIC 'IDOL'") +
+    scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank()) +
+        panel.grid = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_y1_fsbepicboth_fsbepicidol.tiff",
-    device = "tiff",
-    path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
-    limitsize = TRUE)
+  ggsave(filename="2021-04-26_CHILD_y1_fsbepicboth_fsbepicidol.png",
+         path =  here("figures", "deconvolution"),
+         width = 8,
+         height = 6.5,
+         units = "cm",
+         limitsize = TRUE)
 ```
 
 
@@ -573,43 +576,46 @@ child_fsbepic_ecc2_y1_idol_df$sampleid <- y1_pdata$SampleID
 child_fsbepic_ecc2_y1_idol_df$method <- "FlowSorted.Blood.EPIC.IDOL"
 
 #convert dataframes to long format for facetting 
-child_fsbepic_ecc2_y1_any_df_long <- gather(child_fsbepic_ecc2_y1_any_df, celltype, percentage, NK:Mono)
-child_fsbepic_ecc2_y1_idol_df_long <- gather(child_fsbepic_ecc2_y1_idol_df, celltype, percentage, NK:Mono)
+child_fsbepic_ecc2_y1_any_df_long <- gather(child_fsbepic_ecc2_y1_any_df, 
+                                            celltype, percentage, NK:Mono)
+
+child_fsbepic_ecc2_y1_idol_df_long <- gather(child_fsbepic_ecc2_y1_idol_df, 
+                                             celltype, percentage, NK:Mono)
 
 #row bind two methods together
-child_y1_fsbepicany_fsbepicidol <- rbind(child_fsbepic_ecc2_y1_any_df_long, child_fsbepic_ecc2_y1_idol_df_long) 
+child_y1_fsbepicany_fsbepicidol <- rbind(child_fsbepic_ecc2_y1_any_df_long,
+                                         child_fsbepic_ecc2_y1_idol_df_long) 
 
 #spread according to method
-child_y1_fsbepicany_fsbepicidol_wide <- spread(child_y1_fsbepicany_fsbepicidol, method, percentage)
+child_y1_fsbepicany_fsbepicidol_wide <- spread(child_y1_fsbepicany_fsbepicidol, 
+                                               method, percentage)
 
 
 ggplot(child_y1_fsbepicany_fsbepicidol_wide, aes(x=FlowSorted.Blood.EPIC.any,
                                         y=FlowSorted.Blood.EPIC.IDOL)) +
-  geom_point(aes(col=celltype), size=1) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(x="Blood.EPIC 'any'", y = "Blood.EPIC 'IDOL'") +
+    scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank()) +
+        panel.grid = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_y1_fsbepicany_fsbepicidol.tiff",
-    device = "tiff",
-    path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
-    limitsize = TRUE)
+  ggsave(filename="2021-04-26_CHILD_y1_fsbepicany_fsbepicidol.png",
+         path =  here("figures", "deconvolution"),
+         width = 8,
+         height = 6.5,
+         units = "cm",
+         limitsize = TRUE)
 ```
 
 
@@ -631,6 +637,7 @@ child_fsbepic_ecc2_y1_any_df$method <- "FlowSorted.Blood.EPIC.any"
 #convert dataframes to long format for facetting 
 child_fscbc_ecc2_y1_any_df_long <- gather(child_fscbc_ecc2_y1_any_df, 
                                           celltype, percentage, CD4T:CD8T)
+
 child_fsbepic_ecc2_y1_any_df_long <- gather(child_fsbepic_ecc2_y1_any_df, 
                                         celltype, percentage, NK:Mono)
 
@@ -639,36 +646,36 @@ child_y1_fscbcany_fsbepicany <- rbind(child_fscbc_ecc2_y1_any_df_long,
                                 child_fsbepic_ecc2_y1_any_df_long) 
 
 #spread according to method
-child_y1_fscbcany_fsbepicany_wide <- spread(child_y1_fscbcany_fsbepicany, method, percentage )
+child_y1_fscbcany_fsbepicany_wide <- spread(child_y1_fscbcany_fsbepicany, 
+                                            method, percentage )
 
 
 ggplot(child_y1_fscbcany_fsbepicany_wide, aes(x=FlowSorted.CordBloodCombined.450k,
                                         y=FlowSorted.Blood.EPIC.any)) +
-  geom_point(aes(col=celltype), size=1) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(x="CordBloodCombined.450k 'any'", y = "Blood.EPIC 'any'") +
+      scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank()) +
+        panel.grid = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_y1_fscbcany_fsbepicany.tiff",
-    device = "tiff",
-    path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
-    limitsize = TRUE)
+  ggsave(filename="2021-04-26_CHILD_y1_fscbcany_fsbepicany.png",
+         path =  here("figures", "deconvolution"),
+         width = 8,
+         height = 6.5,
+         units = "cm",
+         limitsize = TRUE)
 ```
 
 
@@ -686,6 +693,7 @@ child_fsbepic_ecc2_y1_both_df$method <- "FlowSorted.Blood.EPIC.both"
 #convert dataframes to long format for facetting 
 child_fscbc_ecc2_y1_any_df_long <- gather(child_fscbc_ecc2_y1_any_df, 
                                           celltype, percentage, CD4T:CD8T)
+
 child_fsbepic_ecc2_y1_both_df_long <- gather(child_fsbepic_ecc2_y1_both_df, 
                                         celltype, percentage, NK:Mono)
 
@@ -694,35 +702,34 @@ child_y1_fscbcany_fsbepicboth <- rbind(child_fscbc_ecc2_y1_any_df_long,
                                 child_fsbepic_ecc2_y1_both_df_long) 
 
 #spread according to method
-child_y1_fscbcany_fsbepicboth_wide <- spread(child_y1_fscbcany_fsbepicboth, method, percentage )
+child_y1_fscbcany_fsbepicboth_wide <- spread(child_y1_fscbcany_fsbepicboth,
+                                             method, percentage )
 
 
 ggplot(child_y1_fscbcany_fsbepicboth_wide, aes(x=FlowSorted.CordBloodCombined.450k,
                                         y=FlowSorted.Blood.EPIC.both)) +
-  geom_point(aes(col=celltype), size=1) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(x="CordBloodCombined.450k 'any'", y = "Blood.EPIC 'both'") +
+      scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank()) +
+        panel.grid = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_y1_fscbcany_fsbepicboth.tiff",
-    device = "tiff",
+  ggsave(filename="2021-04-26_CHILD_y1_fscbcany_fsbepicboth.png",
     path =  here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
+    width = 8,
+    height = 6.5,
+    units = "cm",
     limitsize = TRUE)
 ```
 
@@ -750,35 +757,36 @@ child_y1_fscbcany_fsbepicidol <- rbind(child_fscbc_ecc2_y1_any_df_long,
                                     child_fsbepic_ecc2_y1_idol_df_long) 
 
 #spread according to method
-child_y1_fscbcany_fsbepicidol_wide <- spread(child_y1_fscbcany_fsbepicidol, method, percentage)
+child_y1_fscbcany_fsbepicidol_wide <- spread(child_y1_fscbcany_fsbepicidol, 
+                                             method, percentage)
 
 
-ggplot(child_y1_fscbcany_fsbepicidol_wide, aes(x=FlowSorted.CordBloodCombined.450k.any,
-                                        y=FlowSorted.Blood.EPIC.IDOL)) +
-  geom_point(aes(col=celltype), size=1) +
+ggplot(child_y1_fscbcany_fsbepicidol_wide, 
+       aes(x=FlowSorted.CordBloodCombined.450k.any,
+           y=FlowSorted.Blood.EPIC.IDOL)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
   facet_wrap( ~ celltype, ncol=2) +  
   geom_abline(intercept=0,slope=1) +
   stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
   scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
                                 "#BA6E6E", "#498A9E", "#931621")) + 
   labs(x="CordBloodCombined.450k 'any'", y = "Blood.EPIC 'IDOL'") +
+      scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+
   theme_bw() +
   theme(legend.position ="none",
-        axis.text.x = element_text(size=6),
-        axis.text.y = element_text(size=6),
-        axis.title.x = element_text(size=8),
-        axis.title.y = element_text(size=8),
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
         strip.text.x = element_text(size = 6),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank()) +
+        panel.grid = element_blank()) +
   
-  ggsave(
-    filename="2021-01-20_CHILD_y1_fscbcany_fsbepicidol.tiff",
-    device = "tiff",
+  ggsave(filename="2021-04-26_CHILD_y1_fscbcany_fsbepicidol.png",
     path = here("figures", "deconvolution"),
-    width = 3,
-    height = 2.5,
-    units = "in",
+    width = 8,
+    height = 6.5,
+    units = "cm",
     limitsize = TRUE)
 
 ```

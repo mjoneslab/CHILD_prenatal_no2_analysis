@@ -257,12 +257,22 @@ covariates_geno_ctpc_tech$sex <- factor(covariates_geno_ctpc_tech$sex,
 ```
 
 
+Remove rows where air pollution is 0.
+```{r no_zeroes_in_no2}
+covariates_geno_ctpc_tech_not0 <- covariates_geno_ctpc_tech[!covariates_geno_ctpc_tech$no2_preg_entire==0, ]
+
+dim(covariates_geno_ctpc_tech) # 131 132
+dim(covariates_geno_ctpc_tech_not0) # 125 132
+
+```
+
+
 Subset complete cases in covariate data and betas in preparation for DNAm analysis.
 ```{r complete_cases}
 # subset complete cases
 covariates_geno_ctpc_tech_cc <- 
-  covariates_geno_ctpc_tech[complete.cases(
-    covariates_geno_ctpc_tech %>%
+  covariates_geno_ctpc_tech_not0[complete.cases(
+    covariates_geno_ctpc_tech_not0 %>%
       dplyr::select(no2_preg_entire, 
                     sex, 
                     gestational_days,
@@ -276,14 +286,14 @@ covariates_geno_ctpc_tech_cc <-
                     genotyping.PC3)), ] 
 
 # check number of complete cases
-dim(covariates_geno_ctpc_tech_cc) #101 132
+dim(covariates_geno_ctpc_tech_cc) # 95 132
 
 # subset beta values for complete cases
 cb_betas_geno_cc <- cb_betas_geno[,colnames(cb_betas_geno) %in% 
                                     covariates_geno_ctpc_tech_cc$sampleid]
 
 # check size of complete case betas
-dim(cb_betas_geno_cc) # 424644 101
+dim(cb_betas_geno_cc) # 424644 95
 
 # remove probes from betas that were used to predict cell type
 cb_betas_geno_cc_clean <- 
@@ -291,7 +301,7 @@ cb_betas_geno_cc_clean <-
                      rownames(cb_deconvolutionprobes$coefEsts), ]
 
 # check size
-dim(cb_betas_geno_cc_clean) # 424079 101; 565 probes removed
+dim(cb_betas_geno_cc_clean) # 424079 95; 565 probes removed
 ```
 
 
@@ -305,7 +315,7 @@ mod <- model.matrix(~ no2_preg_entire + sex + gestational_days + pss_18wk +
                     data=covariates_geno_ctpc_tech_cc)
 
 # check size
-dim(mod) # 101 15
+dim(mod) # 95 15
 ```
 
 
@@ -505,6 +515,13 @@ svobj <- list(sv = sv, pprob.gam = pprob.gam, pprob.b = pprob.b,
 # to get all info (including diagonal)
 svobj_all <- svd(dats)
 
+svs <- as.data.frame(svobj$sv)
+
+# populate rownames with sampleids
+rownames(svs) <- covariates_geno_ctpc_tech_cc$sampleid
+
+# save 
+save(svs, file = here("output_data", "linear_regression", "2021-06-06_prenatal_svs.RData"))
 
 ###############
 #scree of SVs #
@@ -715,29 +732,29 @@ pvector2 <- pvector[!is.na(pvector) & !is.nan(pvector) & !is.null(pvector) &
 pval_qq <- as.data.frame(cbind(o = -log10(sort(pvector2, decreasing = FALSE)),
                                e = -log10(ppoints(length(pvector2)))))
 
+
 #calculate lambda
 chisq <- qchisq(1-pvector,1)
 lambda <-  median(chisq)/qchisq(0.5,1)
  
 ggplot(pval_qq, aes(x=e, y=o)) + 
-  geom_point(col="#254A90", size=2) + 
+  geom_point(col="#254A90", size=1) + 
   geom_abline(slope = 1, intercept = 0, 
               col = "red", size=0.25, linetype="dashed") +
   labs(x = "Expected -log10(p-value)",
        y = "Observed -log10(p-value)") +
   annotate("text", x=4, y=1, label = paste("λ = ", round(lambda, 2)), size=4) +
   theme_bw() +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        axis.text.x = element_text(size=10),
-        axis.text.y = element_text(size=10),
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size=9),
+        axis.text.y = element_text(size=9),
         axis.title.x = element_text(size=11),
         axis.title.y = element_text(size=11)) +
-  ylim(0,6) + 
+  #ylim(0,7) + 
 
-  ggsave( filename="2021-04-26_CHILD_cb_qqplot.png",
+  ggsave( filename="2021-05-15_CHILD_cb_qqplot.png",
           path =  here("figures", "linear_regression", "prenatal"),
-          width = 8.5, height = 6.5, units = "cm")
+          width = 7.9, height = 6, units = "cm")
 ```
 
 
@@ -761,40 +778,32 @@ ggplot(cb_pvals_tech, aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_pr
   geom_point(alpha=0.4, col = "#254A90", size=1) +
   
   #nominal p value cut off
-  geom_hline(yintercept = -log10(0.00001), linetype="dashed", size=0.25) + 
+  geom_hline(yintercept = -log10(0.000001), linetype="dashed", size=0.25) + 
   
   #10% effect size cut-off
-  geom_point(data=subset(cb_pvals_tech, 
-                         (pval_no2_preg_entire < 0.00001 & db > 0.1) | 
-                           (pval_no2_preg_entire < 0.00001 & db < -0.1)), 
-             alpha=0.4, col = "red", size=1) + 
-  geom_vline(xintercept = c(10, -10), linetype = "dashed", size=0.25) +
+  #geom_point(data=subset(cb_pvals_tech, 
+  #                       (pval_no2_preg_entire < 0.000001 & db > 0.1) | 
+  #                       (pval_no2_preg_entire < 0.000001 & db < -0.1)), 
+  #           alpha=0.4, col = "red", size=1) + 
+  #geom_vline(xintercept = c(10, -10), linetype = "dashed", size=0.25) +
   
   # 5% effect size cut off
-  geom_point(data=subset(cb_pvals_tech, 
-                         (pval_no2_preg_entire < 0.00001 & db > 0.05) | 
-                           (pval_no2_preg_entire < 0.00001 & db < -0.05)), 
-             alpha=0.4, col = "red", size=1) + 
-  geom_vline(xintercept = c(5, -5), linetype = "dashed", size=0.25) +
+  #geom_point(data=subset(cb_pvals_tech, 
+  #                       (pval_no2_preg_entire < 0.000001 & db > 0.05) | 
+  #                         (pval_no2_preg_entire < 0.000001 & db < -0.05)), 
+  #           alpha=0.4, col = "red", size=1) + 
+  #geom_vline(xintercept = c(5, -5), linetype = "dashed", size=0.25) +
   
   
   # 2.5% effect size cut off
   geom_point(data=subset(cb_pvals_tech, 
-                         (pval_no2_preg_entire < 0.00001 & db > 0.025) | 
-                           (pval_no2_preg_entire < 0.00001 & db < -0.025)), 
+                         (pval_no2_preg_entire < 0.000001 & db > 0.025) | 
+                           (pval_no2_preg_entire < 0.000001 & db < -0.025)), 
              alpha=0.4, col = "red", size=1) + 
   geom_vline(xintercept = c(2.5, -2.5), linetype = "dashed", size=0.25) +
-  
-  #label significant points
-  # ggrepel::geom_text_repel(data=subset(cb_pvals_tech, 
-  #                         (pval_no2_preg_entire < 0.00001 & db > 0.025) | 
-  #                           (pval_no2_preg_entire < 0.00001 & db < -0.025)),
-  #                         mapping=aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_preg_entire)),
-  #                                    label=cpgid),
-  #                         size=6) + 
-  
-  scale_x_continuous(breaks=c(-25, -10, -5, 0, 5, 10, 25)) +
-  labs(y="-log10(unadjusted p-value)", x = "Delta beta (%)") +
+
+  scale_x_continuous(breaks = seq(-50, 50, by = 10)) +
+  labs(y="-log10(unadjusted p-value)", x = "Effect size (%)") +
   
   theme_bw() +
   theme(panel.grid = element_blank(),
@@ -803,46 +812,81 @@ ggplot(cb_pvals_tech, aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_pr
         axis.title.x = element_text(size=11),
         axis.title.y = element_text(size=11)) +
   
-  ggsave( filename="2021-04-22_CHILD_cb_volcanoplot.png",
+  ggsave( filename="2021-05-24_CHILD_cb_volcanoplot.png",
           path =  here("figures", "linear_regression", "prenatal"),
           width = 7.9, height = 6, units = "cm")
+
+
+# poster
+
+# plot that volcano
+ggplot(cb_pvals_tech, aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_preg_entire)))) +
+  geom_point(alpha=0.4, col = "#254A90", size=5) +
+  
+  #nominal p value cut off
+  geom_hline(yintercept = -log10(0.000001), linetype="dashed", size=1) + 
+  
+  # 2.5% effect size cut off
+  geom_point(data=subset(cb_pvals_tech, 
+                         (pval_no2_preg_entire < 0.000001 & db > 0.025) | 
+                           (pval_no2_preg_entire < 0.000001 & db < -0.025)), 
+             alpha=0.4, col = "red", size=5) + 
+  geom_vline(xintercept = c(2.5, -2.5), linetype = "dashed", size=1) +
+
+  scale_x_continuous(breaks = seq(-50, 50, by = 10)) +
+  labs(y="-log10(unadjusted p-value)", x = "Effect size (%)") +
+  
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size=22),
+        axis.text.y = element_text(size=22),
+        axis.title.x = element_text(size=25),
+        axis.title.y = element_text(size=25)) +
+  
+  ggsave( filename="2021-06-19_CHILD_cb_volcanoplot_poster.png",
+          path =  here("figures", "linear_regression", "prenatal"),
+          width = 7, height = 5, units = "in")
 ```
 
 Subset out important cpgs
 ```{r sig_cpgs_tables}
-# subset based on delta beta
+# add effect size to ebayes
+cb_ebayes$db <- cb_pvals_tech$db
+
+# subset based on effect size
 cb_ebayes_sig <- cb_ebayes[cb_ebayes$db > 0.025 | cb_ebayes$db < -0.025, ]
 
 # get top ten significant genes with coefficients and write csv
 write.csv(topTable(cb_ebayes_sig, number=10, 
               coef ="no2_preg_entire", sort.by = "P", confint = T),
-     here("tables", "prenatal", "2021-04-26_toptable_prenatal_10cpgs.csv"))
+     here("tables", "prenatal", "2021-05-15_toptable_prenatal_10cpgs.csv"))
 
 # get top 10 cpgs with manifest annotation
 write.csv(subset(cb_pvals_tech, 
-            (pval_no2_preg_entire < 0.00005 & db > 0.025) | 
-                (pval_no2_preg_entire < 0.00005 & db < -0.025)), 
+            (pval_no2_preg_entire < 0.000011 & db > 0.025) | 
+                 (pval_no2_preg_entire < 0.000011 & db < -0.025)), 
           here("tables", "prenatal", 
-               "2021-04-26_top10_prenatal_cpgs.csv"))
+               "2021-05-15_top10_prenatal_cpgs.csv"))
 
 # write out all prenatal findings
 write.csv(cb_pvals_tech, here("tables", "prenatal", 
-                              "2021-04-26_ALL_prenatal_cpgs.csv"))
+                              "2021-05-15_ALL_prenatal_cpgs.csv"))
 ```
 
 
 Plot nominally significant CpGs from volcano plot.
 ```{r sig_cpgs_graphs}
-#####################
-# KBTBD6 cg05732646 #
-#####################
+
+#######################
+# C21orf70 cg03392571 #
+#######################
 
 # add dnam to covariates for linear regression
-covariates_geno_ctpc_tech_cc$cb_cg05732646<- 
-  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg05732646", ]
+covariates_geno_ctpc_tech_cc$cb_cg03392571 <- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg03392571", ]
 
 # linear regression
-cb_cg05732646_lm <- lm(cb_cg05732646 ~ 
+cb_cg03392571_lm <- lm(cb_cg03392571 ~ 
                          no2_preg_entire + sex + gestational_days + pss_18wk +
                          prenatal_maternal_smoking + maternal_education_length + 
                          cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
@@ -851,54 +895,66 @@ cb_cg05732646_lm <- lm(cb_cg05732646 ~
                        data=covariates_geno_ctpc_tech_cc)
 
 # get summary for slope and intercept
-summary(cb_cg05732646_lm)
+summary(cb_cg03392571_lm)
 
 # get partial residuals for no2 and dnam 
-cb_cg05732646_res <- partialResid(cb_cg05732646 ~ no2_preg_entire, 
-                                  cb_cg05732646_lm,
+cb_cg03392571_res <- partialResid(cb_cg03392571 ~ no2_preg_entire, 
+                                  cb_cg03392571_lm,
                                   data=covariates_geno_ctpc_tech_cc)
 
 # fit again to get r2
-cb_cg05732646_res_fit <- lm(cb_cg05732646_res$yresid ~ cb_cg05732646_res$xresid)
+cb_cg03392571_res_fit <- lm(cb_cg03392571_res$yresid ~ cb_cg03392571_res$xresid)
+
+# summary of partial resid fit
+summary(cb_cg03392571_res_fit)
 
 # partial regression plot
-ggplot(cb_cg05732646_res, aes(x=xresid, y=yresid)) + 
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
-  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
-  theme_bw() 
-#labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
-#     y="Methylation (%) partial residual") +
-#annotate("text",x=7,y=0.06, label="slope = -0.0982", size=4) +
-#ggtitle("cg05732646") +
-theme(panel.grid.major = element_blank(), 
-      panel.grid.minor = element_blank(),
-      axis.text = element_text(size=12),
-      axis.title = element_blank(),
-      title = element_blank()) +
-  ylim(-0.2, 0.2) +
-  xlim(-16.5, 14) + 
-  ggsave(filename="2021-03-17_CHILD_cb_cg05732646_KBTBD6.png",
-         path =  here("figures", "linear_regression", "prenatal"),
-         width = 3, height = 2.1, units = "in")
-
-# normal plot
-ggplot(covariates_geno_ctpc_tech_cc,
-       aes(x=no2_preg_entire, 
-           y=cb_cg05732646*100)) + 
+ggplot(cb_cg03392571_res, aes(x=xresid, y=yresid*100)) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(-25, 15), breaks = seq(-20, 10, by = 10)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.text = element_text(size=9),
         axis.title = element_blank()) +
-  ggsave(filename="2021-04-22_CHILD_cb_cg05732646_KBTBD6.png",
+  ggsave(filename="2021-05-24_CHILD_cb_g03392571_C21orf70_PR.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 3.8, height = 3.2, units = "cm")
+         width = 4.0, height = 3.2, units = "cm")
+
+# normal plot
+ggplot(covariates_geno_ctpc_tech_cc, 
+       aes(x=no2_preg_entire, y=cb_cg03392571*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=9),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-05-24_CHILD_cb_cg03392571_C21orf70.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 3.7, height = 3.2, units = "cm")
+
+
+# normal plot for poster
+ggplot(covariates_geno_ctpc_tech_cc, 
+       aes(x=no2_preg_entire, y=cb_cg03392571*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=3) + 
+  stat_smooth(method="lm", se=F, col="red", size=1, linetype="dashed") + 
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=20),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-06-19_CHILD_cb_cg03392571_C21orf70_poster.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4, height = 3.2, units = "in")
+
 
 # correlation 
-cor(covariates_geno_ctpc_tech_cc$cb_cg05732646, 
+cor(covariates_geno_ctpc_tech_cc$cb_cg03392571, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson") #-0.359306
+    method="pearson") #0.4964235
 
 
 ####################
@@ -922,51 +978,62 @@ cb_cg22908922_lm <- lm(cb_cg22908922 ~
 summary(cb_cg22908922_lm)
 
 # get partial residuals for no2 and dnam 
-cb_cg22908922_res <- partialResid(cb_cg22908922 ~ no2_preg_entire, cb_cg22908922_lm, 
-              data=covariates_geno_ctpc_tech_cc)
+cb_cg22908922_res <- partialResid(cb_cg22908922 ~ no2_preg_entire, 
+                                  cb_cg22908922_lm,
+                                  data=covariates_geno_ctpc_tech_cc)
 
 # fit again to get r2
 cb_cg22908922_res_fit <- lm(cb_cg22908922_res$yresid ~ cb_cg22908922_res$xresid)
 
+# summary of partial residual fit
+summary(cb_cg22908922_res_fit)
+
 # plot
-ggplot(cb_cg22908922_res, aes(x=xresid, y=yresid)) + 
+ggplot(cb_cg22908922_res, aes(x=xresid, y=yresid*100)) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(-25, 15), breaks = seq(-20, 10, by = 10)) +
   theme_bw() +
-  #  labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
-  #       y="Methylation (%) partial residual") +
-  #  annotate("text",x=7,y=0.06, label="slope = -0.187", size=4) +
-  #  ggtitle("cg22908922") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
+  theme(panel.grid = element_blank(),
         axis.text = element_text(size=9),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  xlim(-16.5, 14) +
-  ggsave(filename="2021-04-22_CHILD_cb_cg22908922_PACS2.png",
+        axis.title = element_blank())  +
+  ggsave(filename="2021-05-24_CHILD_cb_cg22908922_PACS2_PR.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 3, height = 2.1, units = "in")
+         width = 4.0, height = 3.2, units = "cm")
 
 # normal plot
 ggplot(covariates_geno_ctpc_tech_cc,
-       aes(x=no2_preg_entire, 
-           y=cb_cg22908922*100)) + 
+       aes(x=no2_preg_entire, y=cb_cg22908922*100)) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.text = element_text(size=9),
         axis.title = element_blank()) +
-  ylim(50, 90) +
-  ggsave(filename="2021-04-22_CHILD_cb_cb_cg22908922_PACS2.png",
+  ggsave(filename="2021-05-24_CHILD_cb_cg22908922_PACS2.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 3.8, height = 3.2, units = "cm")
+         width = 3.7, height = 3.2, units = "cm")
+
+
+# poster normal plot
+ggplot(covariates_geno_ctpc_tech_cc,
+       aes(x=no2_preg_entire, y=cb_cg22908922*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=3) + 
+  stat_smooth(method="lm", se=F, col="red", size=1, linetype="dashed") + 
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=20),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-06-19_CHILD_cb_cg22908922_PACS2_poster.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4, height = 3.2, units = "in")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc$cb_cg22908922, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson") #-0.1372331
+    method="pearson") #-0.1659826
 
 #############################
 # AFAP1/LOC84740 cg12228123 #
@@ -996,25 +1063,21 @@ cb_cg12228123_res <- partialResid(cb_cg12228123 ~ no2_preg_entire,
 # fit again to get r2
 cb_cg12228123_res_fit <- lm(cb_cg12228123_res$yresid ~ cb_cg12228123_res$xresid)
 
-# plots
-ggplot(cb_cg12228123_res, aes(x=xresid, y=yresid)) +
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+# get summary of partial residual fit
+summary(cb_cg12228123_res_fit)
+
+# partial residual plot
+ggplot(cb_cg12228123_res, aes(x=xresid, y=yresid*100)) +
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(-25, 15), breaks = seq(-20, 10, by = 10)) +
   theme_bw() +
-#  labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
-#       y="Methylation (%) partial residual") +
-#  annotate("text",x=7,y=0.06, label="slope = -0.377", size=4) +
-#  ggtitle("cg12228123") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  xlim(-16.5, 14) +
-  ggsave( filename="2021-02-04_CHILD_cb_cg12228123_AFAP1.png",
-          path =  here("figures", "linear_regression", "prenatal"),
-          width = 3, height = 2.1, units = "in")
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=9),
+        axis.title = element_blank())  +
+  ggsave(filename="2021-05-24_CHILD_cb_cg12228123_AFAP1_PR.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.0, height = 3.2, units = "cm")
 
 # normal plot
 ggplot(covariates_geno_ctpc_tech_cc,
@@ -1022,20 +1085,34 @@ ggplot(covariates_geno_ctpc_tech_cc,
            y=cb_cg12228123*100)) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.text = element_text(size=9),
         axis.title = element_blank()) +
-  ylim(50, 99) +
-  scale_y_continuous(breaks = seq(55, 95, by = 10)) +
-  ggsave(filename="2021-04-22_CHILD_cb_cg12228123_AFAP1.png",
+  ggsave(filename="2021-05-24_CHILD_cb_cg12228123_AFAP1.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 3.8, height = 3.2, units = "cm")
+         width = 3.7, height = 3.2, units = "cm")
+
+# normal plot nposter
+ggplot(covariates_geno_ctpc_tech_cc,
+       aes(x=no2_preg_entire, 
+           y=cb_cg12228123*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=3) + 
+  stat_smooth(method="lm", se=F, col="red", size=1, linetype="dashed") + 
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=20),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-06-19_CHILD_cb_cg12228123_AFAP1_poster.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4, height = 3.2, units = "in")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc$cb_cg12228123, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson") # -0.3968392
+    method="pearson") # -0.4303284
 
 ```
 
@@ -1118,21 +1195,21 @@ covariates_geno_ctpc_tech_cc_y1_sub <-
                                                                genotyping.PC3)), ] 
 
 #check size
-dim(covariates_geno_ctpc_tech_cc_y1_sub) # 97
+dim(covariates_geno_ctpc_tech_cc_y1_sub) # 92
 
 #subset age one betas for samples in the complete case cord blood betas 
 y1_betas_cc <- y1_betas[,colnames(y1_betas) %in%
                           as.character(covariates_geno_ctpc_tech_cc_y1_sub$sampleid)]
 
 #check size
-dim(y1_betas_cc) #424644    97
+dim(y1_betas_cc) #424644    92
 
 #remove probes that were used for PBMC cell type predict from age one betas
 y1_betas_cc_sub <- y1_betas_cc[!rownames(y1_betas_cc) %in% 
                                  rownames(y1_deconvolutionprobes$coefEsts), ]
 
 #check size
-dim(y1_betas_cc_sub) # 424079    97
+dim(y1_betas_cc_sub) # 424079    92
 # 565 probes removed
 
 #check that covariates and betas in same order
@@ -1151,7 +1228,7 @@ y1_mod <- model.matrix(~ no2_preg_entire + sex + pss_6mos +
                     data=covariates_geno_ctpc_tech_cc_y1_sub)
 
 # check size
-dim(y1_mod) # 97 15
+dim(y1_mod) # 92 13
 ```
 
 
@@ -1292,12 +1369,18 @@ for (i in 1:B) {
 # this is what is normally returned by sva
 # problem is that it doesnt include the diagonal matrix we want
 sv = svd(dats)$v[, 1:n.sv, drop = FALSE] 
-svobj <- list(sv = sv, pprob.gam = pprob.gam, pprob.b = pprob.b, 
+svobj_y1 <- list(sv = sv, pprob.gam = pprob.gam, pprob.b = pprob.b, 
                n.sv = n.sv)
 
 # to get all info (including diagonal)
-svobj_all <- svd(dats)
+svobj_all_y1 <- svd(dats)
 
+# populate rownames with sample ids
+colnames(svobj_all_y1$v) <- covariates_geno_ctpc_tech_cc_y1_sub$sampleid
+
+
+# save 
+save(svobj_all_y1, file = here("output_data", "linear_regression", "2021-06-06_ageone_svs.RData"))
 
 ###############
 #scree of SVs #
@@ -1306,7 +1389,7 @@ svobj_all <- svd(dats)
 # from elodie portales-casamar
 
 # heat scree prepartion
-vars <- svobj_all[['d']]^2
+vars <- svobj_all_y1[['d']]^2
 vars <- vars/sum(vars)
 names(vars) <- paste0('SV', 1:length(vars))
 xp <- 1:svobj$n.sv
@@ -1328,7 +1411,7 @@ ggplot(varsdf[1:nsv,], aes(x=svnum, y=vars)) +
 ######################
 
 # add svs to covariates
-covariates_geno_ctpc_tech_cc_y1_sub <- cbind(covariates_geno_ctpc_tech_cc_y1_sub, svobj$sv)
+covariates_geno_ctpc_tech_cc_y1_sub <- cbind(covariates_geno_ctpc_tech_cc_y1_sub, svobj_y1$sv)
 
 # rename columns with svs
 colnames(covariates_geno_ctpc_tech_cc_y1_sub)[158:173] <-
@@ -1451,7 +1534,7 @@ ggpairs(covariates_geno_ctpc_tech_cc, columns=133:146,
 ###########################
 
 # use 9 SVs 
-y1_modSv = cbind(y1_mod,svobj_all$v[,1:9])
+y1_modSv = cbind(y1_mod,svobj_all_y1$v[,1:9])
 
 ```
 
@@ -1481,12 +1564,12 @@ y1_pvals_tech <- cbind(as.data.frame(y1_ebayes$p.value),
 
 # rename columns to indicate pvalues vs coeffcients 
 colnames(y1_pvals_tech) <- c(paste("pval", 
-                                   colnames(y1_pvals_tech)[1:39], 
+                                   colnames(y1_pvals_tech)[1:22], 
                                    sep = "_"), 
                              paste("coeff", 
-                                   colnames(y1_pvals_tech)[40:78], 
+                                   colnames(y1_pvals_tech)[23:44], 
                                    sep = "_"),
-                             colnames(y1_pvals_tech)[79:109])
+                             colnames(y1_pvals_tech)[45:77])
 
 ```
 
@@ -1533,16 +1616,16 @@ ggplot(pval_qq, aes(x=e, y=o)) +
 Examine persistence of prenatal changes at age one.
 ```{r persistence}
 
-#####################
-# KBTBD6 cg05732646 #
-#####################
+#######################
+# C21orf70 cg03392571 #
+#######################
 
 # add dnam to covariates for linear regression
-covariates_geno_ctpc_tech_cc_y1_sub$y1_cg05732646<- 
-        y1_betas_cc_sub[rownames(y1_betas_cc_sub)=="cg05732646", ]
+covariates_geno_ctpc_tech_cc_y1_sub$y1_cg03392571 <- 
+        y1_betas_cc_sub[rownames(y1_betas_cc_sub)=="cg03392571", ]
 
 # linear regression
-y1_cg05732646_lm <- lm(y1_cg05732646 ~  
+y1_cg03392571_lm <- lm(y1_cg03392571 ~  
                          no2_preg_entire + sex + pss_6mos +
                          maternal_smoking_y1 + maternal_education_length +
                          pbmc.PC1 + pbmc.PC2 + pbmc.PC3 + pbmc.PC4 + 
@@ -1552,54 +1635,67 @@ y1_cg05732646_lm <- lm(y1_cg05732646 ~
                        data=covariates_geno_ctpc_tech_cc_y1_sub)
 
 # summary of lm
-summary(y1_cg05732646_lm)
+summary(y1_cg03392571_lm)
 
 # get partial residuals for no2 and dnam 
-y1_cg05732646_res <- partialResid(y1_cg05732646 ~ no2_preg_entire, 
-                                  y1_cg05732646_lm, 
+y1_cg03392571_res <- partialResid(y1_cg03392571 ~ no2_preg_entire, 
+                                  y1_cg03392571_lm, 
                                   data=covariates_geno_ctpc_tech_cc_y1_sub)
 
 # fit again to get r2
-y1_cg05732646_fit <- lm(y1_cg05732646_res$yresid ~ y1_cg05732646_res$xresid)
+y1_cg03392571_fit <- lm(y1_cg03392571_res$yresid ~ y1_cg03392571_res$xresid)
+
+# summary of partial residual
+summary(y1_cg03392571_fit)
+
 
 # plots
-ggplot(y1_cg05732646_res, aes(x=xresid, y=yresid)) +
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+ggplot(y1_cg03392571_res, aes(x=xresid, y=yresid*100)) +
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(-25, 15), breaks = seq(-20, 10, by = 10)) +
   theme_bw() +
-#  labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
-#       y="Methylation (%) partial residual") +
-#  annotate("text",x=7,y=0.06, label="slope = -0.377", size=4) +
-#  ggtitle("cg12228123") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  xlim(-16.5, 14) +
-  ggsave( filename="2021-03-17_CHILD_y1_cg05732646_KBTBD6.png",
-          path =  here("figures", "linear_regression", "prenatal"),
-          width = 3, height = 2.1, units = "in")
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=9),
+        axis.title = element_blank())  +
+  ggsave(filename="2021-05-25_CHILD_y1_cg03392571_C21orf70_PR.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.0, height = 3.2, units = "cm")
 
 # normal plot
 ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
-       aes(x=no2_preg_entire, 
-           y=y1_cg05732646*100)) + 
+       aes(x=no2_preg_entire, y=y1_cg03392571*100)) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.text = element_text(size=9),
         axis.title = element_blank()) +
-  ggsave(filename="2021-04-22_CHILD_y1_cg05732646_KBTBD6.png",
+  ggsave(filename="2021-05-24_CHILD_y1_cg03392571_C21orf70.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 3.8, height = 3.2, units = "cm")
+         width = 3.7, height = 3.2, units = "cm")
+
+
+# normal plot poster 
+ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
+       aes(x=no2_preg_entire, y=y1_cg03392571*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=3) + 
+  stat_smooth(method="lm", se=F, col="red", size=1, linetype="dashed") + 
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=20),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-06-19_CHILD_y1_cg03392571_C21orf70_poster.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4, height = 3.2, units = "in")
 
 # correlation 
-cor(covariates_geno_ctpc_tech_cc_y1_sub$y1_cg05732646, 
+cor(covariates_geno_ctpc_tech_cc_y1_sub$y1_cg03392571, 
     covariates_geno_ctpc_tech_cc_y1_sub$no2_preg_entire,
-    method="pearson") #-0.1129506
+    method="pearson") #0.02433326
+
 
 ####################
 # PACS2 cg22908922 #
@@ -1630,46 +1726,56 @@ y1_cg22908922_res <- partialResid(y1_cg22908922 ~ no2_preg_entire,
 # fit again to get r2
 y1_cg22908922_fit <- lm(y1_cg22908922_res$yresid ~ y1_cg22908922_res$xresid)
 
-# plots
-ggplot(y1_cg22908922_res, aes(x=xresid, y=yresid)) +
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
-  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
-  theme_bw() +
-#  labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
-#       y="Methylation (%) partial residual") +
-#  annotate("text",x=7,y=0.06, label="slope = -0.377", size=4) +
-#  ggtitle("cg12228123") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  xlim(-16.5, 14) + 
-  
-  ggsave( filename="2021-03-17_CHILD_y1_cg22908922_PACS2.png",
-          path =  here("figures", "linear_regression", "prenatal"),
-          width = 3, height = 2.1, units = "in")
+# summary of partial residual 
+summary(y1_cg22908922_fit)
 
-# normal plot
-ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
-       aes(x=no2_preg_entire, 
-           y=y1_cg22908922*100)) + 
+
+# plots
+ggplot(y1_cg22908922_res, aes(x=xresid, y=yresid*100)) +
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(-25, 15), breaks = seq(-20, 10, by = 10)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.text = element_text(size=9),
         axis.title = element_blank()) +
-    ylim(50, 90) +
-  ggsave(filename="2021-04-22_CHILD_y1_cg22908922_PACS2.png",
+  ggsave(filename="2021-05-24_CHILD_y1_cg22908922_PACS2_PR.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 3.8, height = 3.2, units = "cm")
+         width = 4.0, height = 3.2, units = "cm")
+
+# normal plot
+ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
+       aes(x=no2_preg_entire, y=y1_cg22908922*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=9),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-05-24_CHILD_y1_cg22908922_PACS2.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 3.7, height = 3.2, units = "cm")
+
+
+# normal plot poster
+ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
+       aes(x=no2_preg_entire, y=y1_cg22908922*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=3) + 
+  stat_smooth(method="lm", se=F, col="red", size=1, linetype="dashed") + 
+  theme_bw() +
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=20),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-06-19_CHILD_y1_cg22908922_PACS2.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4, height = 3.2, units = "in")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc_y1_sub$y1_cg22908922, 
     covariates_geno_ctpc_tech_cc_y1_sub$no2_preg_entire,
-    method="pearson") #-0.263054
+    method="pearson") # -0.3001429
 
 
 #############################
@@ -1701,49 +1807,56 @@ y1_cg12228123_res <- partialResid(y1_cg12228123 ~ no2_preg_entire,
 # fit again to get r2
 y1_cg12228123_fit <- lm(y1_cg12228123_res$yresid ~ y1_cg12228123_res$xresid)
 
-# plots
-ggplot(y1_cg12228123_res, aes(x=xresid, y=yresid)) +
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
-  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
-  theme_bw() +
-#  labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
-#       y="Methylation (%) partial residual") +
-#  annotate("text",x=7,y=0.06, label="slope = -0.377", size=4) +
-#  ggtitle("cg12228123") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  xlim(-16.5, 14) +
-  ggsave( filename="2021-03-28_CHILD_y1_cg12228123_AFAP.png",
-          path =  here("figures", "linear_regression", "prenatal"),
-          width = 3, height = 2.1, units = "in")
+#summary of partial resid fit
+summary(y1_cg12228123_fit)
 
-
-# normal plot
-ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
-       aes(x=no2_preg_entire, 
-           y=y1_cg12228123*100)) + 
+# partial residual plots
+ggplot(y1_cg12228123_res, aes(x=xresid, y=yresid*100)) +
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(-25, 15), breaks = seq(-20, 10, by = 10)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.text = element_text(size=9),
         axis.title = element_blank()) +
-    ylim(50, 99) +
-  scale_y_continuous(breaks = seq(55, 95, by = 10)) +
-  ggsave(filename="2021-04-22_CHILD_y1_cg12228123_AFAP1.png",
+  ggsave(filename="2021-05-24_CHILD_y1_cg12228123_AFAP1_PR.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 3.8, height = 3.2, units = "cm")
+         width = 4.0, height = 3.2, units = "cm")
+
+# normal plot
+ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
+       aes(x=no2_preg_entire, y=y1_cg12228123*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  theme_bw() +
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=9),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-05-24_CHILD_y1_cg12228123_AFAP1.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 3.7, height = 3.2, units = "cm")
+
+
+# normal plot poster
+ggplot(covariates_geno_ctpc_tech_cc_y1_sub,
+       aes(x=no2_preg_entire, y=y1_cg12228123*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=3) + 
+  stat_smooth(method="lm", se=F, col="red", size=1, linetype="dashed") + 
+  theme_bw() +
+  scale_y_continuous(limits = c(50, 100), breaks = seq(55, 100, by = 10)) +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=20),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-06-19_CHILD_y1_cg12228123_AFAP1_poster.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4, height = 3.2, units = "in")
+
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc_y1_sub$y1_cg12228123, 
     covariates_geno_ctpc_tech_cc_y1_sub$no2_preg_entire,
-    method="pearson") # -0.1963824
-
-
+    method="pearson") # -0.2256992
 ```
 
 
@@ -1760,8 +1873,7 @@ covariates_geno_ctpc_tech_cc <- cbind(covariates_geno_ctpc_tech_cc, methmeans)
 
 #colmeans
 meanmeth_lm <- 
-  lm(methmeans ~ no2_preg_entire + sex + gestational_days +
-       pss_18wk + 
+  lm(methmeans ~ no2_preg_entire + sex + gestational_days + pss_18wk + 
        prenatal_maternal_smoking + maternal_education_length + 
        cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 +
        genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
@@ -1780,47 +1892,39 @@ methmean_fit <- lm(methmean_res$yresid ~ methmean_res$xresid)
 
 summary(methmean_fit)
 
-ggplot(methmean_res, aes(x=xresid, y=yresid)) +
-  geom_point(alpha=0.6, col = "#254A90", size=3) + 
-  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+# partial residual plot
+ggplot(methmean_res, aes(x=xresid, y=yresid*100)) +
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") +
+  #scale_y_continuous(limits = c(65, 85), breaks = seq(65, 85, by = 5)) +
+  scale_y_continuous(limits = c(-1, 1)) + 
   theme_bw() +
- # labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
- #      y= str_wrap("Global DNA methylation (%) partial residual", 30)) +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=13),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  
-  ggsave( filename="2021-03-17_CHILD_cb_global_dnam.png",
-          path =  here("figures", "linear_regression", "prenatal"),
-          width = 4.8,
-          height = 3.2,
-          units = "in")
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=9),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-05-24_CHILD_cb_global_dnam_PR.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.2, height = 3.2, units = "cm")
 
 
 # normal plot
 ggplot(covariates_geno_ctpc_tech_cc,
-       aes(x=no2_preg_entire, 
-           y=methmeans)) + 
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+       aes(x=no2_preg_entire, y=methmeans*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(40, 60), breaks = seq(40, 60, by = 5)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=14),
+        axis.text = element_text(size=9),
         axis.title = element_blank()) +
-    ylim(0.48, 0.54) +
-  ggsave(filename="2021-03-28_CHILD_cb_global_dnam.png",
+  ggsave(filename="2021-05-24_CHILD_cb_global_dnam.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 4.8, height = 3.2, units = "in")
-
+         width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc$methmeans, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson") # 0.1037103
-
+    method="pearson") # 0.1057361
 ```
 
 
@@ -1878,11 +1982,13 @@ cb_betas_geno_cc_clean_df_lines <-
   cb_betas_geno_cc_clean_df[rownames(cb_betas_geno_cc_clean_df) %in%
                      annotationlines$X, ]
 
+#get size of data frame with line info
 dim(cb_betas_geno_cc_clean_df_lines) # 182299 101
 
-
+# get means of line methylation
 linemeth <- colMeans(cb_betas_geno_cc_clean_df_lines)
 
+# cbind line methylation to covariate data frame
 covariates_geno_ctpc_tech_cc <- cbind(covariates_geno_ctpc_tech_cc, linemeth)
 
 #colmeans
@@ -1894,58 +2000,50 @@ linemeth_lm <- lm(linemeth ~ no2_preg_entire +
                     sv1 + sv2 + sv3 + sv4 + sv5 + sv6, 
               data=covariates_geno_ctpc_tech_cc)
 
+# summary of line regression
 summary(linemeth_lm) #no2 not sig
 
-#get partial residuals for no2 and dnam 
+# get partial residuals for no2 and dnam 
 linemeth_res <- partialResid(linemeth ~ no2_preg_entire, linemeth_lm, 
               data=covariates_geno_ctpc_tech_cc)
 
-#fit again to get r2
+# fit again to get r2
 linemeth_fit <- lm(linemeth_res$yresid ~ linemeth_res$xresid)
 
+# summary of partial residual fit
 summary(linemeth_fit)
 
-ggplot(linemeth_res, aes(x=xresid, y=yresid)) + 
-  geom_point(alpha=0.6, col = "#254A90", size=3) + 
+# partial residual plot
+ggplot(linemeth_res, aes(x=xresid, y=yresid*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
   theme_bw() +
- # labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
- #      y= str_wrap("Global DNA methylation (%) partial residual", 30)) +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=13),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  
-  ggsave( filename="2021-03-17_CHILD_cb_LINE_dnam.png",
-          path =  here("figures", "linear_regression", "prenatal"),
-          width = 4.8,
-          height = 3.2,
-          units = "in")0
-
+    scale_y_continuous(limits=c(-1,1)) + 
+   theme(panel.grid = element_blank(),
+        axis.text = element_text(size=9),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-05-24_CHILD_cb_line_dnam_PR.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.2, height = 3.2, units = "cm")
 
 # normal plot
 ggplot(covariates_geno_ctpc_tech_cc,
-       aes(x=no2_preg_entire, 
-           y=linemeth)) + 
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+       aes(x=no2_preg_entire, y=linemeth*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(40, 60), breaks = seq(40, 60, by = 5)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=14),
+        axis.text = element_text(size=9),
         axis.title = element_blank()) +
-    ylim(0.48, 0.54) +
-  ggsave(filename="2021-03-28_CHILD_cb_LINE_dnam.png",
+  ggsave(filename="2021-05-24_CHILD_cb_line_dnam.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 4.8, height = 3.2, units = "in")
-
+         width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc$linemeth, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson") # 0.0976405
-
+    method="pearson") # 0.09918525
 ```
 
 
@@ -1957,7 +2055,14 @@ These genes are related to the proposed pathway of air pollution action or have 
 #FHC is FTH1 (ferritin heavy chain 1)
 #nothing maps to FOXP3
 #TNFA is TNF
-goi <- annotation[grep("RNF39|CYP2E1|LONP1|HIBADH|SLC25A28|PLVAP|^GPR55$|^CAT$|TPO|NFKB1|^NOX2|SOD1|TRX1|TRX2|GSTP1|^MT3|NQO1|HMOX1|GPX1|DDH1|^NOS2|CYP2C11|CYP7B|^ALOX12$|^ALOX5|^NRF2$|KEAP1|AHR$|^ARNT;|GCLC|GCLM|GSR1|SLC7A11|GPC2|GSTA1|GSTA2|GSTA3|GSTA5|GSTM1|GSTM2|GSTM3|TXN$|TXNRD1$|SRXN1|G6PD|CYP1A1|IL1A|^IL2$|^IL3$|^IL4.*IL4$|^IL5$|^IL6$|IL9$|IL10$|IL12A|IL13|IL15$|IL17A|IL18$|IL19|IL21$|IL22$|IL23A$|IL25$|IL27$|IL31$|IL33$|IFNG$|^TNF$|TGFB1$|FOXP3|FTH1", annotation$UCSC_RefGene_Name), ]
+goi <- annotation[grep("RNF39|CYP2E1|LONP1|HIBADH|SLC25A28|PLVAP|^GPR55$|^CAT$|TPO|NFKB1|
+                       ^NOX2|SOD1|TRX1|TRX2|GSTP1|^MT3|NQO1|HMOX1|GPX1|DDH1|
+                       ^NOS2|CYP2C11|CYP7B|^ALOX12$|^ALOX5|^NRF2$|KEAP1|AHR$|^ARNT;|GCLC|
+                       GCLM|GSR1|SLC7A11|GPC2|GSTA1|GSTA2|GSTA3|GSTA5|GSTM1|GSTM2|
+                       GSTM3|TXN$|TXNRD1$|SRXN1|G6PD|CYP1A1|IL1A|^IL2$|^IL3$|^IL4.*IL4$|
+                       ^IL5$|^IL6$|IL9$|IL10$|IL12A|IL13|IL15$|IL17A|IL18$|IL19|
+                       IL21$|IL22$|IL23A$|IL25$|IL27$|IL31$|IL33$|IFNG$|^TNF$|TGFB1$|
+                       FOXP3|FTH1", annotation$UCSC_RefGene_Name), ]
 
 goi <- as.data.frame(goi)
 unique(goi$UCSC_RefGene_Name)
@@ -1966,11 +2071,12 @@ unique(goi$UCSC_RefGene_Name)
 goi$row <- c(1:nrow(goi))
 goi_sub <- goi[-c(902:915), ]
 unique(goi_sub$UCSC_RefGene_Name)
+# only first annotate gene
+ unique(gsub(";.*$", "", unique(goi_sub$UCSC_RefGene_Name))) # 67
 
 
-
+# transpose for lm function
 cb_betas_geno_cc_clean_t <- t(cb_betas_geno_cc_clean)
-
 
 #apply function for calculating significance of associations using mice and imputed covariate data
 prenatal_goi_list <- 
@@ -2032,7 +2138,8 @@ prenatal_goi_list <-
 
 prenatal_goi <- do.call(rbind, prenatal_goi_list)
 
-prenatal_goi$p.value.no2_preg_entire_adjusted <- p.adjust(prenatal_goi$p.value.no2_preg_entire, method="bonferroni")
+prenatal_goi$p.value.no2_preg_entire_adjusted <- 
+  p.adjust(prenatal_goi$p.value.no2_preg_entire, method="BH")
 
 #reorder according ot unadjusted no2 pvalue
 prenatal_goi_order <- prenatal_goi[order(prenatal_goi$p.value.no2_preg_entire),]
@@ -2050,23 +2157,24 @@ goi_df <- cbind(prenatal_goi_order, goi_order)
 goi_df_pval <- goi_df %>% arrange(p.value.no2_preg_entire)
 
 # add delta beta
-goi_df_pval_db <- merge(goi_df_pval, cb_pvals_tech[,c("db", "cpgid")], by="row.names", all.x=T) 
+goi_df_pval_db <- merge(goi_df_pval, cb_pvals_tech, by="row.names", all.x=T) 
 
 # write out table for all GOIs
 write.csv(goi_df_pval_db, file=here("tables", "prenatal",
-                                 "2021-04-26_goi_prenatal_cpgs.csv"))
+                                 "2021-05-18_goi_prenatal_cpgs.csv"))
 
 # write table of top ten 
 write.csv(goi_df_pval_db %>% 
             subset(db > 0.025 | db < -0.025) %>% 
             subset(-log10(p.value.no2_preg_entire) > 1.6),
-          here("tables", "prenatal", "2021-04-26_top10goi_prenatal_cpgs.csv"))
+          here("tables", "prenatal", "2021-05-18_top10goi_prenatal_cpgs.csv"))
 
 # use top table to get 95% CI
 goi_df_pval_db_sig <- goi_df_pval_db %>% 
             subset(db > 0.025 | db < -0.025) %>% 
             subset(-log10(p.value.no2_preg_entire) > 1.6)
 
+write.csv(goi_df_pval_db_sig, here("tables", "prenatal", "2021-05-18_toptable_prenatal_goi.csv"))
 
 #check cpgs from gruvieva 2017 paper
 
@@ -2088,55 +2196,48 @@ cg12283362_lm <- lm(cg12283362 ~
 # get lm info
 summary(cg12283362_lm)
 
-#get partial residuals for no2 and dnam 
+# get partial residuals for no2 and dnam 
 cg12283362_res <- partialResid(cg12283362 ~ no2_preg_entire, cg12283362_lm, 
               data=covariates_geno_ctpc_tech_cc)
 
-#fit again to get r2
+# fit again to get r2
 cg12283362_res_fit <- lm(cg12283362_res$yresid ~ cg12283362_res$xresid)
 
+# partial residual summary 
 summary(cg12283362_res_fit)
 
-ggplot(cg12283362_res, aes(x=xresid, y=yresid)) + 
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+# partial residual plot
+ggplot(cg12283362_res, aes(x=xresid, y=yresid*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits=c(-10, 10)) +
   theme_bw() +
-#  labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
-#       y="Methylation (%) partial residual") +
-#  annotate("text",x=7,y=0.06, label="slope = -0.377", size=4) +
-#  ggtitle("cg12228123") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  
-  ggsave( filename="2021-03-17_CHILD_cb12283362_LONP1.png",
-          path =  here("figures", "linear_regression", "prenatal"),
-          width = 3.1,
-          height = 2.6,
-          units = "in")
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=9),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-05-24_CHILD_cg12283362_LONP1_PR.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.0, height = 3.2, units = "cm")
+
 
 # normal plot
 ggplot(covariates_geno_ctpc_tech_cc,
-       aes(x=no2_preg_entire, 
-           y=cg12283362)) + 
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+       aes(x=no2_preg_entire, y=cg12283362*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+  scale_y_continuous(limits = c(65, 85), breaks = seq(65, 85, by = 5)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=12),
+        axis.text = element_text(size=9),
         axis.title = element_blank()) +
-  ggsave(filename="2021-03-28_CHILD_cg12283362_LONP1.png",
+  ggsave(filename="2021-05-24_CHILD_cg12283362_LONP1.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 4.8, height = 3.2, units = "in")
+         width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc$cg12283362, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson") # -0.00695959
-
+    method="pearson") # -0.02974077
 
 
 #####################
@@ -2154,55 +2255,48 @@ cg08973675_lm <- lm(cg08973675~
                       sv1 + sv2 + sv3 + sv4 + sv5 + sv6, 
                     data=covariates_geno_ctpc_tech_cc)
 
-#get partial residuals for no2 and dnam 
+# get partial residuals for no2 and dnam 
 cg08973675_res <- partialResid(cg08973675 ~ no2_preg_entire, cg08973675_lm, 
               data=covariates_geno_ctpc_tech_cc)
 
-#fit again to get r2
+# fit again to get r2
 cg08973675_res_fit <- lm(cg08973675_res$yresid ~ cg08973675_res$xresid)
 
+# partial residual summary
 summary(cg08973675_res_fit)
 
-ggplot(cg08973675_res, aes(x=xresid, y=yresid)) + 
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
-  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+# partial residual plot
+ggplot(cg08973675_res, aes(x=xresid, y=yresid*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
+  stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") +
+    scale_y_continuous(limits=c(-10, 10)) +
   theme_bw() +
-#  labs(x=bquote("Prenatal" ~NO[2]~ "(ppb) partial residual"), 
-#       y="Methylation (%) partial residual") +
-#  annotate("text",x=7,y=0.06, label="slope = -0.377", size=4) +
-#  ggtitle("cg12228123") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=12),
-        axis.title = element_blank(),
-        title = element_blank())  +
-  ylim(-0.2, 0.2) +
-  
-  ggsave( filename="2021-03-17_CHILD_cg08973675_SLC25A28.png",
-          path =  here("figures", "linear_regression", "prenatal"),
-          width = 3.1,
-          height = 2.6,
-          units = "in")
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size=9),
+        axis.title = element_blank()) +
+  ggsave(filename="2021-05-24_CHILD_cg08973675_SLC25A28_PR.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.0, height = 3.2, units = "cm")
 
 
 # normal plot
 ggplot(covariates_geno_ctpc_tech_cc,
-       aes(x=no2_preg_entire, 
-           y=cg08973675)) + 
-  geom_point(alpha=0.6, col = "#254A90", size=2) + 
+       aes(x=no2_preg_entire, y=cg08973675*100)) + 
+  geom_point(alpha=0.6, col = "#254A90", size=1) + 
   stat_smooth(method="lm", se=F, col="red", size=0.5, linetype="dashed") + 
+    scale_y_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size=12),
+        axis.text = element_text(size=9),
         axis.title = element_blank()) +
-  ggsave(filename="2021-03-28_CHILD_cg08973675_SLC25A28.png",
+  ggsave(filename="2021-05-24_CHILD_cg08973675_SLC25A28.png",
          path =  here("figures", "linear_regression", "prenatal"),
-         width = 4.8, height = 3.2, units = "in")
+          width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
 cor(covariates_geno_ctpc_tech_cc$cg08973675, 
     covariates_geno_ctpc_tech_cc$no2_preg_entire,
-    method="pearson") # 0.03576155
+    method="pearson") # 0.1007488
 ```
 
 
@@ -2219,103 +2313,16 @@ Try re-running limma with birth month/ interaction between birth month and air p
 
 #start by investigating cpgs identified as nominally significant in volcano plot
 
-#####################
-# KBTBD6 cg05732646 #
-#####################
-
-# add dnam to covariates for linear regression
-covariates_geno_ctpc_tech_cc$cb_cg05732646 <- 
-        cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg05732646", ]
-
-# linear regression
-cb_cg05732646_bm <- lm(cb_cg05732646 ~ 
-                         no2_preg_entire + sex + gestational_days + pss_18wk +
-                         prenatal_maternal_smoking + maternal_education_length + 
-                         cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
-                         genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
-                         sv1 + sv2 + sv3 + sv4 + sv5 + sv6 +
-                         birth_month + no2_preg_entire*birth_month,
-                       data=covariates_geno_ctpc_tech_cc)
-
-# anova to assess significance of interaction term
-anova(cb_cg05732646_bm)
-
-
-tidy(cb_cg05732646_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
-  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
-                                      "no2_preg_entire:birth_monthmarch",
-                                      "no2_preg_entire:birth_monthapril",
-                                      "no2_preg_entire:birth_monthmay",
-                                      "no2_preg_entire:birth_monthjune",
-                                      "no2_preg_entire:birth_monthjuly",
-                                      "no2_preg_entire:birth_monthaugust",
-                                      "no2_preg_entire:birth_monthseptember",
-                                      "no2_preg_entire:birth_monthoctober",
-                                      "no2_preg_entire:birth_monthnovember",
-                                      "no2_preg_entire:birth_monthdecember"))) %>%
-  ggplot(aes(y = estimate, x = as.factor(term))) + 
-  geom_point() +
-  geom_errorbar(aes(ymin = conf.low , ymax = conf.high)) +
-  theme_bw() +
-  #ggtitle("cg15325658") +
-  scale_x_discrete(labels=c("NO2:February","NO2:March", "NO2:April", "NO2:May",
-                            "NO2:June","NO2:July", "NO2:August", "NO2:September",
-                            "NO2:October", "NO2:November","NO2:December")) +
-  labs(x="Interaction term", y="Estimate") +
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text.x = element_text(angle=90),
-        axis.text = element_text(size=12),
-        axis.title = element_text(size=14)) +
-  
-  ggsave(filename="2021-03-17_CHILD_cb_cg05732646_KBTBD6_birthmonth_aug.png",
-         path =  here("figures", "linear_regression", "prenatal"),
-         width = 8.8, height = 4.7, units = "in")
-
-
-
-tidy(cb_cg05732646_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>%
-  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
-                                      "no2_preg_entire:birth_monthmarch",
-                                      "no2_preg_entire:birth_monthapril",
-                                      "no2_preg_entire:birth_monthmay",
-                                      "no2_preg_entire:birth_monthjune",
-                                      "no2_preg_entire:birth_monthjuly",
-                                      "no2_preg_entire:birth_monthaugust",
-                                      "no2_preg_entire:birth_monthseptember",
-                                      "no2_preg_entire:birth_monthoctober",
-                                      "no2_preg_entire:birth_monthnovember",
-                                      "no2_preg_entire:birth_monthdecember"))) %>%
-  subset(term != "no2_preg_entire:birth_monthaugust") %>%
-  ggplot(aes(y = estimate, x = as.factor(term))) + 
-  geom_point() +
-  geom_errorbar(aes(ymin = conf.low , ymax = conf.high)) +
-  theme_bw() +
-  #ggtitle("cg15325658") +
-  scale_x_discrete(labels=c("NO2:February","NO2:March", "NO2:April", "NO2:May",
-                            "NO2:June","NO2:July", "NO2:September",
-                            "NO2:October", "NO2:November","NO2:December")) +
-  labs(x="Interaction term", y="Estimate") +
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text.x = element_text(angle=90),
-        axis.text = element_text(size=12),
-        axis.title = element_text(size=14)) +
-
-  ggsave(filename="2021-03-17_CHILD_cb_cg05732646_KBTBD6_birthmonth.png",
-         path =  here("figures", "linear_regression", "prenatal"),
-         width = 8.8, height = 4.7, units = "in")
-
-
 
 ###########################
 #cg12228123 AFAP1/LOC84740#             
 ###########################
 
+# add to covariate data frame
 covariates_geno_ctpc_tech_cc$cb_cg12228123 <- 
   cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg12228123", ] 
 
-
+# fit wiht lm
 cg12228123_fit_bm <- lm(cb_cg12228123 ~ 
                           no2_preg_entire + sex + gestational_days + pss_18wk +
                           prenatal_maternal_smoking + maternal_education_length + 
@@ -2325,8 +2332,10 @@ cg12228123_fit_bm <- lm(cb_cg12228123 ~
                           birth_month + no2_preg_entire*birth_month,
                         data=covariates_geno_ctpc_tech_cc)
 
+# anova
 anova(cg12228123_fit_bm)
 
+# get plot of birth month effect with 95% CI
 tidy(cg12228123_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
   mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
                                       "no2_preg_entire:birth_monthmarch",
@@ -2339,29 +2348,35 @@ tidy(cg12228123_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>
                                       "no2_preg_entire:birth_monthoctober",
                                       "no2_preg_entire:birth_monthnovember",
                                       "no2_preg_entire:birth_monthdecember"))) %>% 
-  ggplot(aes(y = estimate, x = as.factor(term))) + 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
   geom_point() +
-  geom_errorbar(aes(ymin = conf.low , ymax = conf.high)) +
-  scale_x_discrete(labels=c("NO2:February","NO2:March", "NO2:April", "NO2:May",
-                            "NO2:June","NO2:July", "NO2:August", "NO2:September",
-                            "NO2:October", "NO2:November","NO2:December")) +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.text.x = element_text(angle=90),
-        axis.text = element_text(size=12),
-        axis.title = element_text(size=14)) +
-    labs(x="Interaction term", y="Estimate") 
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg12228123_AFAP1_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+        width = 4.8, height = 4, units = "cm")
 
 
-###################
-#cg05732646 KBTBD6#             
-###################
 
-covariates_geno_ctpc_tech_cc$cb_cg05732646 <- 
-  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg05732646", ] 
+##################
+#cg22908922 PACS2#             
+##################
 
-# linear regression with bm and interaciton term  
-cg05732646_fit_bm <- lm(cb_cg05732646 ~ 
+# add to covariate data frame
+covariates_geno_ctpc_tech_cc$cb_cg22908922 <- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg22908922", ] 
+
+# fit wiht lm
+cg22908922_fit_bm <- lm(cb_cg22908922 ~ 
                           no2_preg_entire + sex + gestational_days + pss_18wk +
                           prenatal_maternal_smoking + maternal_education_length + 
                           cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
@@ -2370,12 +2385,11 @@ cg05732646_fit_bm <- lm(cb_cg05732646 ~
                           birth_month + no2_preg_entire*birth_month,
                         data=covariates_geno_ctpc_tech_cc)
 
+# anova
+anova(cg22908922_fit_bm)
 
-# anova to check for sig
-anova(cg05732646_fit_bm)
-
-# plot CIs
-tidy(cg05732646_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
+# get plot of birth month effect with 95% CI
+tidy(cg22908922_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
   mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
                                       "no2_preg_entire:birth_monthmarch",
                                       "no2_preg_entire:birth_monthapril",
@@ -2387,18 +2401,442 @@ tidy(cg05732646_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>
                                       "no2_preg_entire:birth_monthoctober",
                                       "no2_preg_entire:birth_monthnovember",
                                       "no2_preg_entire:birth_monthdecember"))) %>% 
-  ggplot(aes(y = estimate, x = as.factor(term))) + 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
   geom_point() +
-  geom_errorbar(aes(ymin = conf.low , ymax = conf.high)) +
-  scale_x_discrete(labels=c("NO2:February","NO2:March", "NO2:April", "NO2:May",
-                            "NO2:June","NO2:July", "NO2:August", "NO2:September",
-                            "NO2:October", "NO2:November","NO2:December")) +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
   theme_bw() +
-  theme(panel.grid =element_blank(),
+  theme(panel.grid = element_blank(),
         axis.text.x = element_text(angle=90),
-        axis.text = element_text(size=12),
-        axis.title = element_text(size=14)) +
-    labs(x="Interaction term", y="Estimate") 
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg22908922_PACS2_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 4, units = "cm")
+
+
+
+#####################
+#cg03392571 C21orf70#             
+#####################
+
+# add to covariate data frame
+covariates_geno_ctpc_tech_cc$cb_cg03392571 <- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg03392571", ] 
+
+# fit wiht lm
+cg03392571_fit_bm <- lm(cb_cg03392571 ~ 
+                          no2_preg_entire + sex + gestational_days + pss_18wk +
+                          prenatal_maternal_smoking + maternal_education_length + 
+                          cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
+                          genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                          sv1 + sv2 + sv3 + sv4 + sv5 + sv6 +
+                          birth_month + no2_preg_entire*birth_month,
+                        data=covariates_geno_ctpc_tech_cc)
+
+# anova
+anova(cg03392571_fit_bm)
+
+# get plot of birth month effect with 95% CI
+tidy(cg03392571_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
+  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
+                                      "no2_preg_entire:birth_monthmarch",
+                                      "no2_preg_entire:birth_monthapril",
+                                      "no2_preg_entire:birth_monthmay",
+                                      "no2_preg_entire:birth_monthjune",
+                                      "no2_preg_entire:birth_monthjuly",
+                                      "no2_preg_entire:birth_monthaugust",
+                                      "no2_preg_entire:birth_monthseptember",
+                                      "no2_preg_entire:birth_monthoctober",
+                                      "no2_preg_entire:birth_monthnovember",
+                                      "no2_preg_entire:birth_monthdecember"))) %>% 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle=90),
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg03392571_c21orf70_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 4, units = "cm")
+
+
+
+#################
+#cg08440690 ETFA#             
+#################
+
+# add to covariate data frame
+covariates_geno_ctpc_tech_cc$cb_cg08440690 <- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg08440690", ] 
+
+# fit wiht lm
+cg08440690_fit_bm <- lm(cb_cg08440690 ~ 
+                          no2_preg_entire + sex + gestational_days + pss_18wk +
+                          prenatal_maternal_smoking + maternal_education_length + 
+                          cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
+                          genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                          sv1 + sv2 + sv3 + sv4 + sv5 + sv6 +
+                          birth_month + no2_preg_entire*birth_month,
+                        data=covariates_geno_ctpc_tech_cc)
+
+# anova
+anova(cg08440690_fit_bm)
+
+# get plot of birth month effect with 95% CI
+tidy(cg08440690_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
+  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
+                                      "no2_preg_entire:birth_monthmarch",
+                                      "no2_preg_entire:birth_monthapril",
+                                      "no2_preg_entire:birth_monthmay",
+                                      "no2_preg_entire:birth_monthjune",
+                                      "no2_preg_entire:birth_monthjuly",
+                                      "no2_preg_entire:birth_monthaugust",
+                                      "no2_preg_entire:birth_monthseptember",
+                                      "no2_preg_entire:birth_monthoctober",
+                                      "no2_preg_entire:birth_monthnovember",
+                                      "no2_preg_entire:birth_monthdecember"))) %>% 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle=90),
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg08440690_ETFA_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 4, units = "cm")
+
+
+
+####################
+#cg02243522 MIR1207#             
+####################
+
+# add to covariate data frame
+covariates_geno_ctpc_tech_cc$cb_cg02243522 <- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg02243522", ] 
+
+# fit wiht lm
+cg02243522_fit_bm <- lm(cb_cg02243522 ~ 
+                          no2_preg_entire + sex + gestational_days + pss_18wk +
+                          prenatal_maternal_smoking + maternal_education_length + 
+                          cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
+                          genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                          sv1 + sv2 + sv3 + sv4 + sv5 + sv6 +
+                          birth_month + no2_preg_entire*birth_month,
+                        data=covariates_geno_ctpc_tech_cc)
+
+# anova
+anova(cg02243522_fit_bm)
+
+# get plot of birth month effect with 95% CI
+tidy(cg02243522_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
+  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
+                                      "no2_preg_entire:birth_monthmarch",
+                                      "no2_preg_entire:birth_monthapril",
+                                      "no2_preg_entire:birth_monthmay",
+                                      "no2_preg_entire:birth_monthjune",
+                                      "no2_preg_entire:birth_monthjuly",
+                                      "no2_preg_entire:birth_monthaugust",
+                                      "no2_preg_entire:birth_monthseptember",
+                                      "no2_preg_entire:birth_monthoctober",
+                                      "no2_preg_entire:birth_monthnovember",
+                                      "no2_preg_entire:birth_monthdecember"))) %>% 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle=90),
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg02243522_mir1207_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 4, units = "cm")
+
+
+
+#############
+#cg26881997 #             
+#############
+
+# add to covariate data frame
+covariates_geno_ctpc_tech_cc$cb_cg26881997 <- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg26881997", ] 
+
+# fit wiht lm
+cg26881997_fit_bm <- lm(cb_cg26881997 ~ 
+                          no2_preg_entire + sex + gestational_days + pss_18wk +
+                          prenatal_maternal_smoking + maternal_education_length + 
+                          cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
+                          genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                          sv1 + sv2 + sv3 + sv4 + sv5 + sv6 +
+                          birth_month + no2_preg_entire*birth_month,
+                        data=covariates_geno_ctpc_tech_cc)
+
+# anova
+anova(cg26881997_fit_bm)
+
+# get plot of birth month effect with 95% CI
+tidy(cg26881997_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
+  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
+                                      "no2_preg_entire:birth_monthmarch",
+                                      "no2_preg_entire:birth_monthapril",
+                                      "no2_preg_entire:birth_monthmay",
+                                      "no2_preg_entire:birth_monthjune",
+                                      "no2_preg_entire:birth_monthjuly",
+                                      "no2_preg_entire:birth_monthaugust",
+                                      "no2_preg_entire:birth_monthseptember",
+                                      "no2_preg_entire:birth_monthoctober",
+                                      "no2_preg_entire:birth_monthnovember",
+                                      "no2_preg_entire:birth_monthdecember"))) %>% 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle=90),
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg26881997_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 4, units = "cm")
+
+
+#############
+#cg00679662 #             
+#############
+
+# add to covariate data frame
+covariates_geno_ctpc_tech_cc$cb_cg00679662 <- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg00679662", ] 
+
+# fit wiht lm
+cg00679662_fit_bm <- lm(cb_cg00679662 ~ 
+                          no2_preg_entire + sex + gestational_days + pss_18wk +
+                          prenatal_maternal_smoking + maternal_education_length + 
+                          cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
+                          genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                          sv1 + sv2 + sv3 + sv4 + sv5 + sv6 +
+                          birth_month + no2_preg_entire*birth_month,
+                        data=covariates_geno_ctpc_tech_cc)
+
+# anova
+anova(cg00679662_fit_bm)
+
+# get plot of birth month effect with 95% CI
+tidy(cg00679662_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
+  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
+                                      "no2_preg_entire:birth_monthmarch",
+                                      "no2_preg_entire:birth_monthapril",
+                                      "no2_preg_entire:birth_monthmay",
+                                      "no2_preg_entire:birth_monthjune",
+                                      "no2_preg_entire:birth_monthjuly",
+                                      "no2_preg_entire:birth_monthaugust",
+                                      "no2_preg_entire:birth_monthseptember",
+                                      "no2_preg_entire:birth_monthoctober",
+                                      "no2_preg_entire:birth_monthnovember",
+                                      "no2_preg_entire:birth_monthdecember"))) %>% 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle=90),
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg00679662_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+         width = 4.8, height = 4, units = "cm")
+
+
+######################
+#cg23386895 CDC42EP2 #             
+######################
+
+# add to covariate data frame
+covariates_geno_ctpc_tech_cc$cb_cg23386895<- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg23386895", ] 
+
+# fit wiht lm
+cg23386895_fit_bm <- lm(cb_cg23386895~ 
+                          no2_preg_entire + sex + gestational_days + pss_18wk +
+                          prenatal_maternal_smoking + maternal_education_length + 
+                          cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
+                          genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                          sv1 + sv2 + sv3 + sv4 + sv5 + sv6 +
+                          birth_month + no2_preg_entire*birth_month,
+                        data=covariates_geno_ctpc_tech_cc)
+
+# anova
+anova(cg23386895_fit_bm)
+
+# get plot of birth month effect with 95% CI
+tidy(cg23386895_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
+  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
+                                      "no2_preg_entire:birth_monthmarch",
+                                      "no2_preg_entire:birth_monthapril",
+                                      "no2_preg_entire:birth_monthmay",
+                                      "no2_preg_entire:birth_monthjune",
+                                      "no2_preg_entire:birth_monthjuly",
+                                      "no2_preg_entire:birth_monthaugust",
+                                      "no2_preg_entire:birth_monthseptember",
+                                      "no2_preg_entire:birth_monthoctober",
+                                      "no2_preg_entire:birth_monthnovember",
+                                      "no2_preg_entire:birth_monthdecember"))) %>% 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle=90),
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg23386895_CDC42EP2_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+        width = 4.8, height = 4, units = "cm")
+
+
+
+###################
+#cg08374494 ZFPM1 #             
+###################
+
+# add to covariate data frame
+covariates_geno_ctpc_tech_cc$cb_cg08374494<- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg08374494", ] 
+
+# fit wiht lm
+cg08374494_fit_bm <- lm(cb_cg08374494~ 
+                          no2_preg_entire + sex + gestational_days + pss_18wk +
+                          prenatal_maternal_smoking + maternal_education_length + 
+                          cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
+                          genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                          sv1 + sv2 + sv3 + sv4 + sv5 + sv6 +
+                          birth_month + no2_preg_entire*birth_month,
+                        data=covariates_geno_ctpc_tech_cc)
+
+# anova
+anova(cg08374494_fit_bm)
+
+# get plot of birth month effect with 95% CI
+tidy(cg08374494_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
+  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
+                                      "no2_preg_entire:birth_monthmarch",
+                                      "no2_preg_entire:birth_monthapril",
+                                      "no2_preg_entire:birth_monthmay",
+                                      "no2_preg_entire:birth_monthjune",
+                                      "no2_preg_entire:birth_monthjuly",
+                                      "no2_preg_entire:birth_monthaugust",
+                                      "no2_preg_entire:birth_monthseptember",
+                                      "no2_preg_entire:birth_monthoctober",
+                                      "no2_preg_entire:birth_monthnovember",
+                                      "no2_preg_entire:birth_monthdecember"))) %>% 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle=90),
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg08374494_ZFPM1_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+        width = 4.8, height = 4, units = "cm")
+
+
+####################
+#cg08447934 ACVRL1 #             
+####################
+
+# add to covariate data frame
+covariates_geno_ctpc_tech_cc$cb_cg08447934<- 
+  cb_betas_geno_cc_clean[rownames(cb_betas_geno_cc_clean)=="cg08447934", ] 
+
+# fit wiht lm
+cg08447934_fit_bm <- lm(cb_cg08447934~ 
+                          no2_preg_entire + sex + gestational_days + pss_18wk +
+                          prenatal_maternal_smoking + maternal_education_length + 
+                          cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4 + cbmc.PC5 + 
+                          genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                          sv1 + sv2 + sv3 + sv4 + sv5 + sv6 +
+                          birth_month + no2_preg_entire*birth_month,
+                        data=covariates_geno_ctpc_tech_cc)
+
+# anova
+anova(cg08447934_fit_bm)
+
+# get plot of birth month effect with 95% CI
+tidy(cg08447934_fit_bm, conf.int = 0.95) %>% filter(term %>% str_detect(":")) %>% 
+  mutate(term = factor(term, levels=c("no2_preg_entire:birth_monthfebruary",
+                                      "no2_preg_entire:birth_monthmarch",
+                                      "no2_preg_entire:birth_monthapril",
+                                      "no2_preg_entire:birth_monthmay",
+                                      "no2_preg_entire:birth_monthjune",
+                                      "no2_preg_entire:birth_monthjuly",
+                                      "no2_preg_entire:birth_monthaugust",
+                                      "no2_preg_entire:birth_monthseptember",
+                                      "no2_preg_entire:birth_monthoctober",
+                                      "no2_preg_entire:birth_monthnovember",
+                                      "no2_preg_entire:birth_monthdecember"))) %>% 
+  ggplot(aes(y = estimate*100, x = as.factor(term))) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low*100 , ymax = conf.high*100)) +
+  scale_x_discrete(labels=c("February","March", "April", "May",
+                            "June","July", "August", "September",
+                            "October", "November","December")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle=90),
+        axis.text = element_text(size=9, hjust=0.9),
+        axis.title = element_blank()) +
+    
+    
+  ggsave(filename="2021-05-18_CHILD_cb_cg08447934_ACVRL1_birthmonth_aug.png",
+         path =  here("figures", "linear_regression", "prenatal"),
+        width = 4.8, height = 4, units = "cm")
+
+
 ```
 
 Boxplots of NO2, PM2.5

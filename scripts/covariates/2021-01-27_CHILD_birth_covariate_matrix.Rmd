@@ -13,22 +13,25 @@ library(tidyverse)
 library(plyr)
 library(ggpubr)
 library(here)
+library(table1)
+library(VennDiagram)
 ```
+
 
 Load in CHILD covariate data.
 ```{r covariates}
-load(here("output_data", "covariates", "2020-11-03_CHILD_all_covariates.Rdata"))
+load(file=here("output_data", "covariates", "2020-11-03_CHILD_all_covariates.Rdata"))
 ```
 
 Read in cell type estimates.  
 ```{r load_deconvolution}
-load(here("output_data", "deconvolution", "2021-01-07_CBMC_PBMC_deconvolution.Rdata"))
+load(here("output_data", "deconvolution", "2021-06-06_CBMC_PBMC_deconvolution.Rdata"))
 ```
 
 Load pData.  
 ```{r load_pData}
 #this pdata has bad samples removed and sample mix-up corrected
-load(file = here("output_data", "preprocessed_data", "2021-01_14_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
+load(file = here("output_data", "preprocessed_data", "2021-01-14_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
   
 #subset pData into CBMCs (cord blood)
 cb_pdata <- subset(pdata_nodups, Tissue == "C")
@@ -38,7 +41,7 @@ dim(cb_pdata) #144 18
 
 Read in genotyping PCs
 ```{r genotyping}
-genotyping <- read.csv("R:/Jones/People/Samantha Lee/Computational/CHILD/input_data/CHILD_subjects_Qced_first10PCS_Duan.csv")
+genotyping <- read.csv(here("input_data", "genotyping", "CHILD_subjects_Qced_first10PCS_Duan.csv"))
 
 #make rownames sample names then rmove this row
 rownames(genotyping) <- genotyping$FID
@@ -1420,7 +1423,7 @@ ggplot(covariates_cb, aes(x=genotyping.PC3, y=PM25DALbYY_01)) +
 
 Load cell type PCs
 ```{r cb_celltype_PCs}
-load(here("output_data", "deconvolution", "2020-11-10_CBMC_PCs.RData"))
+load(here("output_data", "deconvolution", "2021-02-04_CBMC_PCs.RData"))
 
 #rename rows of pcs
 identical(rownames(cb_pcs), rownames(cb_pdata)) #True
@@ -1493,6 +1496,23 @@ dim(covariates_nameans_geno_ctpc_tech_cc) #101 126
 ```
 
 
+Subset out children who have a prenatal no2 exposure of 0
+```{r no2_zero}
+covariates_nameans_geno_ctpc_tech_cc <- covariates_nameans_geno_ctpc_tech_cc[covariates_nameans_geno_ctpc_tech_cc$no2_preg_entire != 0, ]
+
+dim(covariates_nameans_geno_ctpc_tech_cc)
+```
+
+Add in surrogate variables for batch effects and other unaccounted biological influences.
+```{r svs}
+load(file = here("output_data", "linear_regression", "2021-06-06_prenatal_svs.RData"))
+
+svs <- svobj_all$u
+# subset for participants with svs
+covariates_nameans_geno_ctpc_tech_cc
+
+```
+
 Get pvalues for covariates_cb101 
 ```{r get-pvals}
 #sub for covariates of interested
@@ -1501,7 +1521,7 @@ covariates_nameans_geno_ctpc_tech_cc_sub <-
          select=c(no2_preg_entire, 
                   prenatal_maternal_smoking, 
                   sex, gestational_days, 
-                  pss_18wk,csed_18wk, 
+                  pss_18wk,
                   maternal_education_length,
                   cbmc.PC1, cbmc.PC2, cbmc.PC3,
                   cbmc.PC4, cbmc.PC5,
@@ -1525,7 +1545,7 @@ covariates_nameans_geno_ctpc_tech_cc_sub_corr[covariates_nameans_geno_ctpc_tech_
 
 
 
-```{r corrplot_cb101}
+```{r corrplot_cb95}
 corrplot(covariates_nameans_geno_ctpc_tech_cc_sub_corr,
          pch = 8,
          pch.cex = 1.5,
@@ -1539,11 +1559,11 @@ corrplot(covariates_nameans_geno_ctpc_tech_cc_sub_corr,
         panel.grid.major = element_blank(),
         legend.key.height = unit(0.5, 'cm'),
         legend.key.width = unit(0.2, 'cm'),
-        legend.text = element_text(size=5),
+        legend.text = element_text(size=6),
         legend.title = element_text(size=7),
         legend.position="left") +
   scale_y_discrete(labels = c("Prenatal NO2", "Maternal smoking", "Sex", 
-                              "Gestational age", "Maternal stress", "Maternal depression",
+                              "Gestational age", "Maternal stress", 
                               "Maternal education length", 
                               "Cell type PC1", "Cell type PC2", "Cell type PC3",
                               "Cell type PC4", "Cell type PC5",
@@ -1551,19 +1571,19 @@ corrplot(covariates_nameans_geno_ctpc_tech_cc_sub_corr,
                               "Run", "Row"),
                    position = "right") +
   scale_x_discrete(labels = c("Maternal smoking", "Sex", 
-                              "Gestational age", "Maternal stress", "Maternal depression",
+                              "Gestational age", "Maternal stress", 
                               "Maternal education length", 
                               "Cell type PC1", "Cell type PC2", "Cell type PC3",
                               "Cell type PC4", "Cell type PC5",
                               "Genotyping PC1", "Genotyping PC2", "Genotyping PC3",
-                              "Run", "Row", "Study centre")) 
+                              "Run", "Row", "Study centre")) + 
 
 
-ggsave("R:/Jones/People/Samantha Lee/Projects/CHILD/CHILD_air_pollution/figures/2021-01-27_CHILD_cb101_ctpc_corrplot.tiff",
-       device="tiff",
-       height=3,
-       width=6,
-       units="in")
+ggsave(here("figures", "covariates", "2021-06-06_CHILD_prenatal95_corrplot.png"),
+       device="png",
+       height= 8,
+       width= 15 ,
+       units="cm")
 ```
 
 

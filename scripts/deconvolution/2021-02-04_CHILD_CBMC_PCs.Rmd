@@ -43,7 +43,7 @@ library(here)
 
 Load CHILD145 deconvolution data. This deconvolution does not include granulocytes as granulocytes are not expected.
 ```{r load_CHILD_data, message=FALSE, warning=FALSE}
-load(here("output_data", "deconvolution", "2021-01-07_CBMC_PBMC_deconvolution.RData"))
+load(here("output_data", "deconvolution", "2021-09-24_cbmc_pbmc_deconvolution.Rdata"))
 
 #rm year one data
 rm(y1_allprobes, y1_deconvolutionprobes, child_fscbc_ecc2_y1)
