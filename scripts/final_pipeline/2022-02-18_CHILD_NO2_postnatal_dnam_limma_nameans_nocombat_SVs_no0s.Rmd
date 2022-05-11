@@ -24,7 +24,8 @@ library(ggeffects) # for estimating marginal effects
 library(broom) # tidy function for summarizing lm
 library(sva) # for calculating SVs
 library(ggcorrplot) # correlation matrix
-library(bacon) # bacon pvalue correction
+library(bacon) # pvalue correction
+library(ggsignif) # for significance comparison bars
 ```
 
 
@@ -984,7 +985,7 @@ after_qqplot <- ggplot(pval_qq, aes(x=e, y=o)) +
         axis.text.y = element_text(size=9),
         axis.title = element_blank()) +
   facet_grid(.~"Bacon corrected") +
-    lims(y = c(0, 6.25))
+  lims(y = c(0, 6.25))
 
 ggsave(plot = after_qqplot, 
        filename= here("figures", 
@@ -1011,14 +1012,17 @@ Volcano plot
 diff_pvals_tech$cpgid <- rownames(diff_pvals_tech)
 
 #volcano plot
-volcano_plot <- ggplot(diff_pvals_tech, aes(x=as.numeric(db)*100 , y=-log10(as.numeric(pval_no2_y1_entire_bacon)))) +
+volcano_plot <- ggplot(diff_pvals_tech, 
+                       aes(x=as.numeric(db), 
+                           y=-log10(as.numeric(pval_no2_y1_entire_bacon)))) +
   geom_point(alpha=0.4, col = "#254A90", size=1) +
   # 2.5% effect size cut off
   geom_point(data=subset(diff_pvals_tech, 
                          (pval_no2_y1_entire_bacon_adj < 0.25 & db > 0.025) | 
                            (pval_no2_y1_entire_bacon_adj < 0.25 & db < -0.025)), 
              alpha=0.4, col = "red", size=1) + 
-  scale_x_continuous(limits = c(-50, 50), breaks = seq(-50, 50, by = 10)) +
+  scale_x_continuous(limits = c(-0.50, 0.50), 
+                     breaks = seq(-0.50, 0.50, by = 0.10)) +
   labs(y="-log10(unadjusted p-value)", x = "Effect size (%)") +
   theme_bw() +
   theme(panel.grid = element_blank(),
@@ -1033,7 +1037,7 @@ ggsave(plot = volcano_plot,
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal", 
-                       "2022-05-06_pn_volcanoplot.png"),
+                       "2022-05-10_pn_volcanoplot.png"),
        width = 7.5, height = 6, units = "cm")
 ```
 
@@ -1127,6 +1131,7 @@ cor(covariates_geno_ctpcs_tech_cc_not0$cg07472943,
     covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire,
     method="pearson") # -0.1948573
 
+lm(cg07472943_no2_me$cg07472943 ~cg07472943_no2_me$no2_y1_entire)
 
 ##############
 # cg19263548 #
@@ -1187,6 +1192,9 @@ cor(covariates_geno_ctpcs_tech_cc_not0$cg19263548,
     covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire,
     method="pearson") # -0.2254198
 
+# check slope of marginal effect
+lm(cg07472943_no2_me$cg07472943 ~ cg07472943_no2_me$no2_y1_entire)
+
 
 ####################
 # cg26989646 FOSL2 #
@@ -1246,6 +1254,11 @@ ggsave(plot = cg26989646_plot,
 cor(covariates_geno_ctpcs_tech_cc_not0$cg26989646, 
     covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire,
     method="pearson") # -0.211321
+
+
+# check slope of marginal effect
+lm(cg26989646_no2_me$cg26989646 ~ cg26989646_no2_me$no2_y1_entire)
+
 
 
 #######################
@@ -1558,7 +1571,7 @@ These genes are related to the proposed pathway of air pollution action or have 
 #nothing maps to FOXP3
 #TNFA is TNF
 
-goi <- annotation[grep("^RNF39|^CYP2E1|^LONP1|^SLC25A28|^PLVAP|^CAT$|^CAT;|^TPO|^NFKB1|^NOX2|^SOD1|^TRX1|^TRX2|^GSTP1|^MT3|^NQO1|^HMOX1|^TGPX1|^DDH1|^NOS2|^CYP2C11|^CYP7B|^ALOX12$|^ALOX5;|^ALOX5$|^NRF2$|^NRF2;|^KEAP1|^AHR$|^AHR;|^ARNT;|^ARNT$|^GCLC|^GCLM|^GSR1|^SLC7A11|^GPC2|^GSTA1|^GSTA2|^GSTA3|^GSTA5|^GSTM1|^GSTM2|^GSTM3|^TXN$|^TXN;|^TXNRD1$|^TXNRD1;|^SRXN1|^G6PD|^CYP1A1|^IL1A|^IL2$|^IL2;|^IL3$|^IL3;|^IL4;|^IL4$|^IL5$|^IL5;|^IL6$|^IL6;|^IL9$|^IL9;|^IL10$|^IL10;|^IL12A|^IL13|^IL15$|^IL15;|^IL17A|^IL18$|^IL18;|^IL19|^IL21$|^IL21;|^IL22$|^IL22;|^IL23A$|^IL23A;|^IL25$|^IL25;|^IL27$|^IL27;|^IL31$|^IL31;|^IL33$|^IL33;|^IFNG$|^IFNG;|^TNF$|^TNF;|^TGFB1$|^TGFB1;|^FOXP3|^FTH1", annotation$UCSC_RefGene_Name), ] %>% as.data.frame()
+goi <- annotation[grep("^RNF39|^CYP2E1|^LONP1|^SLC25A28|^PLVAP|^CAT$|^CAT;|^TPO|^NFKB1|^NOX2|^SOD1|^SOD2|^TRX1|^TRX2|^GSTP1|^MT3|^NQO1|^HMOX1|^TGPX1|^DDH1|^NOS2|^CYP2C11|^CYP7B|^ALOX12$|^ALOX5;|^ALOX5$|^NRF2$|^NRF2;|^KEAP1|^AHR$|^AHR;|^ARNT;|^ARNT$|^GCLC|^GCLM|^GSR1|^SLC7A11|^GSTA1|^GSTA2|^GSTA3|^GSTA5|^GSTM1|^GSTM2|^GSTM3|^TXN$|^TXN;|^TXNRD1$|^TXNRD1;|^SRXN1|^G6PD|^CYP1A1|^IL1A|^IL2$|^IL2;|^IL3$|^IL3;|^IL4;|^IL4$|^IL5$|^IL5;|^IL6$|^IL6;|^IL9$|^IL9;|^IL10$|^IL10;|^IL12A|^IL13|^IL15$|^IL15;|^IL17A|^IL18$|^IL18;|^IL19|^IL21$|^IL21;|^IL22$|^IL22;|^IL23A$|^IL23A;|^IL25$|^IL25;|^IL27$|^IL27;|^IL31$|^IL31;|^IL33$|^IL33;|^IFNG$|^IFNG;|^TNF$|^TNF;|^TGFB1$|^TGFB1;|^FOXP3|^FTH1", annotation$UCSC_RefGene_Name), ] %>% as.data.frame()
 
 unique(goi$UCSC_RefGene_Name)
 unique(gsub(";.*$", "", unique(goi$UCSC_RefGene_Name))) # 59
@@ -1700,13 +1713,13 @@ cg12283362_no2_me <- ggpredict(cg12283362_lm, terms = "no2_y1_entire") %>%
 # plot
 cg12283362_plot <- ggplot(covariates_geno_ctpcs_tech_cc_not0,
                           aes(x = no2_y1_entire, 
-                              y= cg12283362*100)) + 
+                              y= cg12283362)) + 
   geom_line(data = cg12283362_no2_me, 
-            aes(x=no2_y1_entire, y = cg12283362*100),
+            aes(x=no2_y1_entire, y = cg12283362),
             col="red", size=0.5, linetype="solid") +
   geom_ribbon(data = cg12283362_no2_me, 
               aes(x = no2_y1_entire, 
-                  ymin = conf.low*100, ymax = conf.high*100), 
+                  ymin = conf.low, ymax = conf.high), 
               alpha = .2) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   theme_bw() +
@@ -1720,13 +1733,24 @@ ggsave(plot = cg12283362_plot,
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal", 
-                       "2022-05-06_cg12283362_LONP1.png"),
+                       "2022-05-09_cg12283362_LONP1.png"),
        width = 4, height = 3.2, units = "cm")
+
+# effect size
+range_no2 = max(covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire) -
+  min(covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire)
+
+summary(cg12283362_lm)$coefficients["no2_y1_entire", "Estimate"]*range_no2 # -0.1103026
 
 # correlation 
 cor(covariates_geno_ctpcs_tech_cc_not0$cg12283362, 
     covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire,
     method="pearson") # -0.003466747
+
+# check slope of marginal effect
+lm(cg26989646_no2_me$cg26989646 ~ cg26989646_no2_me$no2_y1_entire)
+
+
 
 
 #####################
@@ -1758,13 +1782,13 @@ cg08973675_no2_me <- ggpredict(cg08973675_lm, terms = "no2_y1_entire") %>%
 # plot
 cg08973675_plot <- ggplot(covariates_geno_ctpcs_tech_cc_not0,
                           aes(x = no2_y1_entire, 
-                              y= cg08973675*100)) + 
+                              y= cg08973675)) + 
   geom_line(data = cg08973675_no2_me, 
-            aes(x=no2_y1_entire, y = cg08973675*100),
+            aes(x=no2_y1_entire, y = cg08973675),
             col="red", size=0.5, linetype="solid") +
   geom_ribbon(data = cg08973675_no2_me, 
               aes(x = no2_y1_entire, 
-                  ymin = conf.low*100, ymax = conf.high*100), 
+                  ymin = conf.low, ymax = conf.high), 
               alpha = .2) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   theme_bw() +
@@ -1772,14 +1796,22 @@ cg08973675_plot <- ggplot(covariates_geno_ctpcs_tech_cc_not0,
         axis.text = element_text(size=9),
         panel.border = element_blank(),
         axis.line = element_line(color ="black"),
-        axis.title = element_blank()) 
+        axis.title = element_blank()) +
+  scale_y_continuous(breaks = seq(-0.08, 0.08, by=0.04), limits=c(-0.08, 0.08))
 
 ggsave(plot = cg08973675_plot, 
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal", 
-                       "2022-05-06_cg08973675_SLC25A28.png"),
+                       "2022-05-09_cg08973675_SLC25A28.png"),
        width = 4, height = 3.2, units = "cm")
+
+# effect size
+range_no2 = max(covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire) -
+  min(covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire)
+
+summary(cg08973675_lm)$coefficients["no2_y1_entire", "Estimate"]*range_no2 # -0.1103026
+
 
 # correlation 
 cor(covariates_geno_ctpcs_tech_cc_not0$cg08973675, 
@@ -1818,13 +1850,13 @@ cg18668679_no2_me <- ggpredict(cg18668679_lm, terms = "no2_y1_entire") %>%
 # plot
 cg18668679_plot <- ggplot(covariates_geno_ctpcs_tech_cc_not0,
                           aes(x = no2_y1_entire, 
-                              y= cg18668679*100)) + 
+                              y= cg18668679)) + 
   geom_line(data = cg18668679_no2_me, 
-            aes(x=no2_y1_entire, y = cg18668679*100),
+            aes(x=no2_y1_entire, y = cg18668679),
             col="red", size=0.5, linetype="solid") +
   geom_ribbon(data = cg18668679_no2_me, 
               aes(x = no2_y1_entire, 
-                  ymin = conf.low*100, ymax = conf.high*100), 
+                  ymin = conf.low, ymax = conf.high), 
               alpha = .2) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   theme_bw() +
@@ -1838,13 +1870,15 @@ ggsave(plot = cg18668679_plot,
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal", 
-                       "2022-05-06_cg18668679_LONP1.png"),
+                       "2022-05-09_cg18668679_LONP1.png"),
        width = 4, height = 3.2, units = "cm")
 
 # correlation 
 cor(covariates_geno_ctpcs_tech_cc_not0$cg18668679, 
     covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire,
     method="pearson") # -0.3433974
+
+summary(cg18668679_lm)$coefficients["no2_y1_entire", "Estimate"]*range_no2 # -0.1103026
 ```
 
 
@@ -1863,18 +1897,18 @@ covariates_geno_ctpcs_tech_cc_not0$any_wheeze_y1 <-
 
 # reported wheeze
 cg07472943_wheeze <- ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
-         dplyr::select(any_wheeze_y1, cg07472943) %>%
-         na.omit(), 
-       aes(x=as.factor(any_wheeze_y1), y=cg07472943*100)) +
+                              dplyr::select(any_wheeze_y1, cg07472943) %>%
+                              na.omit(), 
+                            aes(x=as.factor(any_wheeze_y1), y=cg07472943)) +
   geom_boxplot(alpha=0.6, outlier.shape = NA) +
   geom_jitter(height=0, width=0.25, alpha=0.6, col = "#254A90", size=1) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.title = element_blank()) +
-  scale_y_continuous(limits=c(-6, 9)) +
+  scale_y_continuous(limits=c(-0.06, 0.09)) +
   scale_x_discrete(labels = c("No", "Yes")) +
   ggsignif::geom_signif(comparisons = list(c("0", "1")),
-                        annotations = "p=0.09", 
+                        annotations = "adj.p=0.09", 
                         textsize = 3,vjust = -0.25)
 
 
@@ -1882,7 +1916,7 @@ ggsave(plot = cg07472943_wheeze,
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal", 
-                       "2022-05-06_cg07472943_wheeze.png"),
+                       "2022-05-09_cg07472943_wheeze.png"),
        width = 5, height = 5, units = "cm")
 
 
@@ -2345,13 +2379,13 @@ methmean_no2_me <- ggpredict(meanmeth_lm, terms = "no2_y1_entire") %>%
 # plot
 methmean_plot <- ggplot(covariates_geno_ctpcs_tech_cc_not0,
                         aes(x = no2_y1_entire, 
-                            y= methmeans*100)) + 
+                            y= methmeans)) + 
   geom_line(data = methmean_no2_me, 
-            aes(x=no2_y1_entire, y = methmeans*100),
+            aes(x=no2_y1_entire, y = methmeans),
             col="red", size=0.5, linetype="solid") +
   geom_ribbon(data = methmean_no2_me, 
               aes(x = no2_y1_entire, 
-                  ymin = conf.low*100, ymax = conf.high*100), 
+                  ymin = conf.low, ymax = conf.high), 
               alpha = .2) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   theme_bw() +
@@ -2359,19 +2393,23 @@ methmean_plot <- ggplot(covariates_geno_ctpcs_tech_cc_not0,
         axis.text = element_text(size=9),
         panel.border = element_blank(),
         axis.line = element_line(color ="black"),
-        axis.title = element_blank()) 
+        axis.title = element_blank()) +
+  scale_y_continuous(breaks = seq(-0.02, 0.06, by = 0.02), limits = c(-0.02,0.06))
 
 ggsave(plot = methmean_plot, 
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal", 
-                       "2022-05-06_pn_global_dnam.png"),
+                       "2022-05-10_pn_global_dnam.png"),
        width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
 cor(covariates_geno_ctpcs_tech_cc_not0$methmeans, 
     covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire,
     method="pearson") # -0.06389888
+
+# effect size
+summary(meanmeth_lm)$coefficients["no2_y1_entire", "Estimate"]*range_no2 # -0.1103026
 ```
 
 
@@ -2379,9 +2417,9 @@ cor(covariates_geno_ctpcs_tech_cc_not0$methmeans,
 
 # read in line annotation from UCSC and repeat masker 
 repeats_450k   <- read.delim(file = gzfile(here("input_data", 
-                                          "ucsc_rmsk_lines", 
-                                          "ucsc_repeatmasker_enc_methyl450_gm12878.gz")),
-                              header = T, skip = 1, sep = "\t")
+                                                "ucsc_rmsk_lines", 
+                                                "ucsc_repeatmasker_enc_methyl450_gm12878.gz")),
+                             header = T, skip = 1, sep = "\t")
 
 # subset repeats for L1 LINE elements that are not in sex chromosomes
 lines_450k  <- repeats_450k %>% 
@@ -2396,7 +2434,7 @@ diff_betas_geno_cc_cpr_lines <- diff_betas_geno_cc_cpr %>%
   subset(rownames(.) %in% lines_450k$wgEncodeHaibMethyl450Gm12878SitesRep1.name)
 
 # num of cpgs annotated to lines 
-nrow(diff_betas_geno_cc_cpr_lines) # 7302 
+nrow(diff_betas_geno_cc_cpr_lines) # 7301
 
 # get mean of line meth 
 line_meth <- colMeans(diff_betas_geno_cc_cpr_lines)
@@ -2406,13 +2444,13 @@ covariates_geno_ctpcs_tech_cc_not0 <- cbind(covariates_geno_ctpcs_tech_cc_not0, 
 
 #colmeans
 line_meth_lm <- lm(line_meth ~ no2_y1_entire + sex + pss_6mos + 
-                    maternal_smoking_y1 + maternal_education_length +
-                    celltype.PC1 + celltype.PC2 + celltype.PC3 + celltype.PC4 + 
-                    celltype.PC5 + celltype.PC6 + celltype.PC7 + 
-                    genotyping.PC1 + genotyping.PC2 + 
-                    genotyping.PC3 + sv1 + sv2 + sv3 + sv4 + sv5 + sv6 + sv7 + 
-                    sv8 + sv9 +  sv10 + sv11 + sv12 + sv13 + sv14 + sv15, 
-                  data=covariates_geno_ctpcs_tech_cc_not0)
+                     maternal_smoking_y1 + maternal_education_length +
+                     celltype.PC1 + celltype.PC2 + celltype.PC3 + celltype.PC4 + 
+                     celltype.PC5 + celltype.PC6 + celltype.PC7 + 
+                     genotyping.PC1 + genotyping.PC2 + 
+                     genotyping.PC3 + sv1 + sv2 + sv3 + sv4 + sv5 + sv6 + sv7 + 
+                     sv8 + sv9 +  sv10 + sv11 + sv12 + sv13 + sv14 + sv15, 
+                   data=covariates_geno_ctpcs_tech_cc_not0)
 
 # summary of line regression
 summary(line_meth_lm) 
@@ -2426,13 +2464,13 @@ line_meth_no2_me <- ggpredict(line_meth_lm, terms = "no2_y1_entire") %>%
 # plot 
 line_dnam_plot <- ggplot(covariates_geno_ctpcs_tech_cc_not0,
                          aes(x = no2_y1_entire, 
-                             y= line_meth*100)) + 
+                             y= line_meth)) + 
   geom_line(data = line_meth_no2_me, 
-            aes(x=no2_y1_entire, y = line_meth*100),
+            aes(x=no2_y1_entire, y = line_meth),
             col="red", size=0.5, linetype="solid") +
   geom_ribbon(data = line_meth_no2_me, 
               aes(x = no2_y1_entire, 
-                  ymin = conf.low*100, ymax = conf.high*100), 
+                  ymin = conf.low, ymax = conf.high), 
               alpha = .2) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
   theme_bw() +
@@ -2440,19 +2478,24 @@ line_dnam_plot <- ggplot(covariates_geno_ctpcs_tech_cc_not0,
         axis.text = element_text(size=9),
         panel.border = element_blank(),
         axis.line = element_line(color ="black"),
-        axis.title = element_blank()) 
+        axis.title = element_blank()) +
+  scale_y_continuous(breaks = seq(-0.02, 0.06, by = 0.02), limits = c(-0.02,0.06))
 
 ggsave(plot = line_dnam_plot, 
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal",
-                       "2022-05-09_cb_line_dnam.png"),
+                       "2022-05-10_postnatal_line_dnam.png"),
        width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
 cor(covariates_geno_ctpcs_tech_cc_not0$line_meth, 
     covariates_geno_ctpcs_tech_cc_not0$no2_y1_entire,
-    method="pearson") # -0.05782799
+    method="pearson") # -0.1191814
+
+
+# effect size
+summary(line_meth_lm)$coefficients["no2_y1_entire", "Estimate"]*range_no2 # -0.1103026
 ```
 
 
