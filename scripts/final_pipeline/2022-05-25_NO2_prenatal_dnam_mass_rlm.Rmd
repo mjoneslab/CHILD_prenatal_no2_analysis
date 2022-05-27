@@ -258,7 +258,6 @@ covariates_geno_ctpc_tech$sex <- factor(covariates_geno_ctpc_tech$sex,
                                         ordered=F)
 ```
 
-
 Remove rows where air pollution is 0.
 ```{r no_zeroes_in_no2}
 covariates_geno_ctpc_tech_not0 <- covariates_geno_ctpc_tech[!covariates_geno_ctpc_tech$no2_preg_entire==0, ]
@@ -266,7 +265,6 @@ covariates_geno_ctpc_tech_not0 <- covariates_geno_ctpc_tech[!covariates_geno_ctp
 dim(covariates_geno_ctpc_tech) # 131 132
 dim(covariates_geno_ctpc_tech_not0) # 125 132
 ```
-
 
 Subset complete cases in covariate data and betas in preparation for DNAm analysis.
 ```{r complete_cases}
@@ -381,8 +379,6 @@ edge.lfdr <- function(p, trunc=TRUE, monotone=TRUE, transf=c("probit", "logit"),
   }
   return(lfdr)
 }
-
-
 
 ##################################
 # numsv function internal to sva #
@@ -517,7 +513,7 @@ svobj_all <- svd(dats)
 svs_cb <- as.data.frame(svobj$sv)
 
 # save 
-save(sv_cb, file = here("output_data", "linear_regression", "2022-05-25_prenatal_svs.RData"))
+save(sv_cb, file = here("output_data", "linear_regression", "2022-05-06_prenatal_svs.RData"))
 
 ###############
 #scree of SVs #
@@ -545,7 +541,7 @@ ggsave(plot = cb_sv_scree,
        filename = here("figures", 
                        "linear_regression", 
                        "prenatal", 
-                       "2022-05-25_cb_sv_heat_scree.png"),
+                       "2022-05-06_cb_sv_heat_scree.png"),
        height = 5, width = 15, units = "cm")
 
 # it looks like the first two svs are most important, but SVA suggests 14
@@ -630,7 +626,7 @@ ggsave(plot = svcorr,
        filename = here("figures",
                        "linear_regression",
                        "prenatal", 
-                       "2022-05-25_sv_correlations.png"),
+                       "2022-05-15_06_sv_correlations.png"),
        height = 15, width = 15, units = "cm")
 
 
@@ -730,7 +726,6 @@ cb_pvals_tech$pval_no2_preg_entire_adj  <-
   p.adjust(cb_pvals_tech$pval_no2_preg_entire , method="BH")
 ```
 
-
 Bacon pvalue adjustment
 ```{r bacon}
 # t stats in bacon
@@ -753,9 +748,53 @@ ggsave(plot = bacon_before_after,
        filename= here("figures", 
                       "linear_regression", 
                       "prenatal", 
-                      "2022-05-25_cb_bacon_before_after.png"),
+                      "2022-05-06_cb_bacon_before_after.png"),
        width = 12, height = 6, units = "cm")
 ```
+
+
+MASS package  for robust linear regression 
+```{r mass_rlm_no2_ewas}
+library(MASS)
+library(aod)
+
+# create function to run robust lm over all betas
+set.seed(1234)
+rlm_cb_no2 <- apply(cb_betas_geno_cc_clean, 1, function(x){
+  
+  covariates_geno_ctpc_tech_cc$dnam <- as.numeric(x)
+  
+  # robust rlm function 
+  model <- rlm(formula = dnam ~ no2_preg_entire + sex + gestational_days + pss_18wk +
+                         prenatal_maternal_smoking + maternal_education_length + 
+                         cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4  + 
+                         genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                         sv1 + sv2 + sv3 + sv4 + sv5 + sv6 + sv7 + sv8 + 
+                         sv9 + sv10 + sv11 + sv12 + sv13 + sv14,
+               data = covariates_geno_ctpc_tech_cc,
+               method = "M",
+               scale.est = "Huber",
+               maxit = 100)
+
+  sig_no2 <- wald.test(Sigma = vcov(model), b = coef(model), Terms = 2)
+
+  out <- c(model$coefficients,
+           "converged" = model$converged,
+           "sig_no2" = sig_no2$result$chi2)
+
+  out
+}) 
+
+rlm_cb_no2_df <- rlm_cb_no2 %>% 
+  t() %>%
+  as.data.frame()
+
+saveRDS(rlm_cb_no2_df, 
+        file = here("output_data",
+                    "linear_regression",
+                    "2022-05-25_prenatal_rlm_pvalues.rds"))
+```
+
 
 
 Examine the qqplot.
@@ -777,6 +816,7 @@ pval_qq <- as.data.frame(cbind(o = -log10(sort(pvector2, decreasing = FALSE)),
                                e = -log10(ppoints(length(pvector2)))))
 
 # inflation and bias
+set.seed(1234)
 inflation <- inflation(bc)
 bias <-  bias(bc)
 
@@ -800,7 +840,7 @@ before_qqplot <-  ggplot(pval_qq, aes(x=e, y=o)) +
         axis.text.x = element_text(size=9),
         axis.text.y = element_text(size=9),
         axis.title = element_blank()) +
-  facet_grid(.~"Uncorrected")  +
+  facet_grid(.~"Uncorrected limma") +
   lims(y = c(0, 8))
 
 
@@ -808,7 +848,7 @@ ggsave(plot = before_qqplot,
        filename= here("figures", 
                       "linear_regression", 
                       "prenatal", 
-                      "2022-05-25_uncorrected_qqplot.png"),
+                      "2022-05-25_uncorrected_qqplot_rlm_comparison.png"),
        width = 6, height = 5, units = "cm")
 
 ###########################
@@ -855,8 +895,103 @@ ggsave(plot = after_qqplot,
        filename= here("figures", 
                       "linear_regression", 
                       "prenatal", 
-                      "2022-05-25_bacon_corrected_qqplot.png"),
+                      "2022-05-25_bacon_corrected_qqplot_rlm_comparison.png"),
        width = 6, height = 5, units = "cm")
+
+####################
+# MASS rlm pvalues #
+####################
+
+pvector <- rlm_cb_no2_df %>% 
+  subset(converged==1) %>%
+pull(sig_no2.P)
+
+pvector2 <- pvector[!is.na(pvector) & !is.nan(pvector) & !is.null(pvector) & 
+                      is.finite(pvector) & pvector < 1 & pvector > 0]
+
+pval_qq <- as.data.frame(cbind(o = -log10(sort(pvector2, decreasing = FALSE)),
+                               e = -log10(ppoints(length(pvector2)))))
+
+
+#calculate lambda
+chisq <- qchisq(1-pvector2,1)
+lambda <-  median(chisq)/qchisq(0.5,1)
+
+
+# qqplot of bacon corrected pvalues for main paper figure
+rlm_qqplot <-  ggplot(pval_qq, aes(x=e, y=o)) + 
+  geom_point(col="#254A90", size=1) + 
+  geom_abline(slope = 1, intercept = 0, 
+              col = "red", size=0.25, linetype="dashed") +
+  labs(x = "Expected -log10(p-value)",
+       y = "Observed -log10(p-value)") +
+  annotate("text", label = paste("λ=", signif(lambda,3), sep=""), 
+           x = 5, y = 2, size = 4, colour = "black") + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size=9),
+        axis.text.y = element_text(size=9),
+        axis.title = element_blank()) +
+  facet_grid(.~"MASS rlm") +
+  lims(y = c(0, 8))
+
+ggsave(plot = rlm_qqplot, 
+       filename= here("figures", 
+                      "linear_regression", 
+                      "prenatal", 
+                      "2022-05-25_mass_rpm_pvalues_rlm_comparison.png"),
+       width = 6, height = 5, units = "cm")
+```
+
+
+
+
+Direct comparison between limma pvalues, bacon corrected pvalues, and mass rlm pvalues
+```{r pvalue_comparison}
+
+limma_mass <- ggplot(data = NULL,  
+                     aes(x=cb_pvals_tech$pval_no2_preg_entire, 
+                         y = rlm_cb_no2_df$sig_no2.P)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
+  theme_bw() +
+  labs(x = "Uncorrected limma p-values", "Mass rlm p-values")
+
+
+limma_mass_sig <- ggplot(data = NULL,  
+                     aes(x=cb_pvals_tech$pval_no2_preg_entire, 
+                         y = rlm_cb_no2_df$sig_no2.P)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
+  theme_bw() +
+  labs(x = "Uncorrected limma p-values", "Mass rlm p-values") +
+  xlim(0,0.0001) +
+  ylim(0,0.0001)
+
+
+bacon_mass <- ggplot(data = NULL,  
+                     aes(x=cb_pvals_tech$pval_no2_preg_entire_bacon, 
+                         y = rlm_cb_no2_df$sig_no2.P)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
+  theme_bw() +
+  labs(x = "Uncorrected limma p-values", "Mass rlm p-values")
+
+bacon_mass_sig <- ggplot(data = NULL,  
+                     aes(x=cb_pvals_tech$pval_no2_preg_entire_bacon, 
+                         y = rlm_cb_no2_df$sig_no2.P)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
+  theme_bw() +
+  labs(x = "Uncorrected limma p-values", "Mass rlm p-values") +
+  xlim(0,0.0001) +
+  ylim(0,0.0001)
+```
+
+Combine rlm pvalues with limma
+```{r rlm_limma}
+cb_pvals_tech_rlm <- cbind(cb_pvals_tech, rlm_cb_no2_df$sig_no2.P)
+
 ```
 
 
@@ -872,6 +1007,9 @@ cb_pvals_tech$db <- cb_pvals_tech$coeff_no2_preg_entire * range
 Volcano plot
 ```{r volcano_db_tech}
 
+#make new column to label sig points with cpgid
+cb_pvals_tech$cpgid <- rownames(cb_pvals_tech)
+
 # plot that volcano
 cb_volcano <- ggplot(cb_pvals_tech, 
                      aes(x=as.numeric(db) , 
@@ -882,6 +1020,9 @@ cb_volcano <- ggplot(cb_pvals_tech,
                          (pval_no2_preg_entire_bacon_adj < 0.25 & db > 0.025) | 
                            (pval_no2_preg_entire_bacon_adj < 0.25 & db < -0.025)), 
              alpha=0.4, col = "red", size=1) + 
+  # horizontal lines for effect size cut offs
+  #geom_vline(xintercept = c(2.5, -2.5), linetype = "dashed", size=0.25) +
+  # aesthetics
   scale_x_continuous(breaks = seq(-0.50, 0.50, by = 0.10)) +
   labs(y="-log10(unadjusted p-value)", x = "Effect size (% DNAm)") +
   theme_bw() +
@@ -897,7 +1038,7 @@ ggsave(plot = cb_volcano,
        filename = here("figures", 
                        "linear_regression", 
                        "prenatal", 
-                       "2022-05-25_cb_volcanoplot.png"),
+                       "2022-05-10_cb_volcanoplot.png"),
        width = 7.5, height = 6, units = "cm")
 ```
 
@@ -1371,10 +1512,10 @@ cb_cg12283362_dnam_plot <- ggplot(covariates_geno_ctpc_tech_cc,
                   ymin = conf.low, ymax = conf.high), 
               alpha = .2) + 
   geom_point(alpha=0.6, col = "#254A90", size=1) + 
-    scale_y_continuous(breaks = seq(0.6,0.9,by=0.1), 
-                       limits = c(0.6,0.9),
-                       labels = scales::number_format(accuracy = 0.01)) +
-
+  scale_y_continuous(breaks = seq(0.6,0.9,by=0.1), 
+                     limits = c(0.6,0.9),
+                     labels = scales::number_format(accuracy = 0.01)) +
+  
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.text = element_text(size=9),
