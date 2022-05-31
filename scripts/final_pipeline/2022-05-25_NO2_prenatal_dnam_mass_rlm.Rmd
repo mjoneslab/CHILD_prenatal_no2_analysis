@@ -26,18 +26,18 @@ library(sva) # for calculating SVs
 library(ggcorrplot) # correlation matrix
 library(bacon) # pvalue correction
 library(ggsignif) # for significance comparison bars
+library(MASS) # robust regression
+library(aod) # wald test for robust regression
 ```
 
-
 Load betas
-```{r betas}
+```{r load_betas}
 load(file=here("output_data", "preprocessed_data",
                "2021-10_07_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
 ```
 
-
-Subset out cord blood betas
-```{r nocombat_betas}
+Subset out cord blood betas.
+```{r subset_cordblood_betas}
 # check ranges to confirm DNAm data is in beta value format
 dim(betas)
 max(betas)
@@ -62,15 +62,13 @@ identical(colnames(cb_betas), rownames(cb_pdata)) # TRUE
 colnames(cb_betas) <- cb_pdata$Sample_Label
 ```
 
-
 Load covariate data. Missing values in covariates of interest have been filled with the mean of that variable. 
-```{r covariates}
+```{r load_covariates}
 load(file=here("output_data", "covariates", "2021-09-24_CHILD_covariates_na_with_means.Rdata"))
 ```
 
-
-Subset covariates for individuals with CBMC DNAm.
-```{r sub_covariates}
+Subset covariates for individuals with cord blood DNAm.
+```{r subset_covariates}
 # subset covariates based on samples with DNAm data
 covariates_sub <- covariates_nameans[as.character(covariates_nameans$sampleid) 
                                      %in% colnames(cb_betas), ]
@@ -82,9 +80,8 @@ dim(covariates_sub) # 144 113
 identical(as.character(covariates_sub$sampleid), colnames(cb_betas)) # TRUE
 ```
 
-
-Load CBMC PCs.
-```{r load_PC_correctedbetas}
+Load cord blood PCs.
+```{r load_celltype_pcs}
 # load the cell type PCs
 load(here("output_data", "deconvolution", "2021-09-24_CBMC_PCs.RData"))
 
@@ -101,10 +98,8 @@ rownames(cb_pcs) <- cb_pdata$Sample_Label
 colnames(cb_pcs) <- paste("cbmc.", colnames(cb_pcs), sep="")
 ```
 
-
-Load genotyping PCs and subset out REEGLE PCs. 
-Genotyping data contains PCs for all CHILD participants that were genotyped.
-```{r genotyping_PCS}
+Load genotyping PCs. Subset out REEGLE PCs (genotyping data contains PCs for all CHILD participants that were genotyped).
+```{r load_genotyping_pcs}
 # read in genotyping data for CHILD cohort
 genotyping <- read.csv(here("input_data", "genotyping", "CHILD_subjects_Qced_first10PCS_Duan.csv"))
 
@@ -125,7 +120,6 @@ colnames(genosub) <- paste("genotyping.", colnames(genosub), sep="")
 #put rows in numerical order according to sample id
 genosub_order <- genosub[order(rownames(genosub)), ]
 ```
-
 
 Examine genetic ancestry groups of participants based on genotyping PCs. Want to confirm that three PCs are required for genetic ancestry.
 ```{r genotyping_pc_groups, eval=FALSE}
@@ -175,7 +169,7 @@ ggplot(pca_sub, aes(x=PC1, y=PC2,
 
 
 Subset betas, pdata, covariates, and cell type PCS for participants with genotyping data (the limiting factor).
-```{r subset}
+```{r subset_beta_pdata_covariates_for_participants_w_genotyping}
 # subset betas
 cb_betas_geno <- cb_betas[, rownames(genosub_order)]
 # check size of subbed betas
@@ -200,7 +194,7 @@ dim(cb_pcs_geno) # 131 10
 
 
 Check that betas, pdata, covariates, cell type PCs are in same order as genotyping data for REEGLE participants.
-```{r cb_batchcorr_order}
+```{r check_data_order}
 # pdata and genosub_order
 identical(as.character(cb_pdata_geno$Sample_Label),rownames(genosub_order)) # TRUE
 
@@ -214,9 +208,8 @@ identical(as.character(covariates_sub_geno$sampleid), rownames(genosub_order)) #
 identical(rownames(genosub_order), rownames(cb_pcs_geno)) # TRUE
 ```
 
-
 Combined covariates, genotyping, cell type PCs, and pData together.
-```{r combine_cell_pcs_covariates}
+```{r combine_covariates_genotype_celltypepcs_pdata}
 
 ###################################
 # clean up pdata before combining #
@@ -258,16 +251,17 @@ covariates_geno_ctpc_tech$sex <- factor(covariates_geno_ctpc_tech$sex,
                                         ordered=F)
 ```
 
-Remove rows where air pollution is 0.
-```{r no_zeroes_in_no2}
+Remove rows where air pollution is 0. A value of 0 is not realistics
+```{r remove_zeroes_in_no2}
 covariates_geno_ctpc_tech_not0 <- covariates_geno_ctpc_tech[!covariates_geno_ctpc_tech$no2_preg_entire==0, ]
 
 dim(covariates_geno_ctpc_tech) # 131 132
 dim(covariates_geno_ctpc_tech_not0) # 125 132
+# 6 rows removed
 ```
 
 Subset complete cases in covariate data and betas in preparation for DNAm analysis.
-```{r complete_cases}
+```{r subset_for_covariate_complete_cases}
 # subset complete cases
 covariates_geno_ctpc_tech_cc <- covariates_geno_ctpc_tech_not0 %>%
   subset(complete.cases(no2_preg_entire, sex, gestational_days,
@@ -294,7 +288,6 @@ cb_betas_geno_cc_clean <-
 dim(cb_betas_geno_cc_clean) # 424079 95; 565 probes removed
 ```
 
-
 Create model matrix for DNAm analysis. This model matrix does not contain batch variables as we are going to let surrogate variables capture their variance within the DNAm data. 
 ```{r model_matrix}
 # create model matrix
@@ -308,8 +301,7 @@ mod <- model.matrix(~ no2_preg_entire + sex + gestational_days + pss_18wk +
 dim(mod) # 95 15
 ```
 
-
-Surrogate variable analysis using the sva packages. This will allow us to capture variance due to batch effects, as well as variance due to unkown biological variables. 
+Surrogate variable analysis using the SVA package. This will allow us to capture variance due to batch effects, as well as variance due to unknown biological variables. 
 ```{r sva}
 
 ###############
@@ -384,14 +376,14 @@ edge.lfdr <- function(p, trunc=TRUE, monotone=TRUE, transf=c("probit", "logit"),
 # numsv function internal to sva #
 ##################################
 
-#determine the number of required SVs
-#this is numsv function code pulled out
+# determine the number of required SVs
+# this is numsv function code pulled out
 
-#this is what is fed into this function from the sva function
+# this is what is fed into this function from the sva function
 dat = cb_betas_geno_cc_clean
 mod = mod
-#method="be" # this is the default and what is called by numsv
-#vfilter=NULL # we dont apply a filter and its not used for be method
+# method="be" # this is the default and what is called by numsv
+# vfilter=NULL # we dont apply a filter and its not used for be method
 B=20
 set.seed(1234)
 
@@ -636,19 +628,19 @@ ggsave(plot = svcorr,
 
 source(here("scripts", "2021-09-14_heat_scree_plot.R"))
 
-#convert raw betas to mvals
+# convert raw betas to mvals
 mvals <- lumi::beta2m(cb_betas_geno_cc_clean)
 max(mvals)
 min(mvals)
 
-#pca 
+# pca 
 uncor.dat <- t(scale(t(mvals)))
 PCA_full<-princomp(na.omit(uncor.dat))
 Loadings<-as.data.frame(unclass(PCA_full$loadings))
 vars <- PCA_full$sdev^2
 Importance <-vars/sum(vars)
 
-#Specify which covariates are categorical and/or continuous
+# Specify which covariates are categorical and/or continuous
 meta_categorical <- 
   covariates_geno_ctpc_tech_cc[,c("sex", "prenatal_maternal_smoking",
                                   "run", "chip")] 
@@ -670,7 +662,7 @@ Num<-10
 # Designate what order you want the variables to appear (continuous variables rbinded to categorical variables in function)
 Order<-c(1:40)
 
-#Apply function on PCA results of uncorrected data, pulls in the meta data and beta values from above
+# Apply function on PCA results of uncorrected data, pulls in the meta data and beta values from above
 heat_scree_plot(Loadings = Loadings, 
                 Importance = Importance, 
                 Num = Num, 
@@ -755,9 +747,6 @@ ggsave(plot = bacon_before_after,
 
 MASS package  for robust linear regression 
 ```{r mass_rlm_no2_ewas}
-library(MASS)
-library(aod)
-
 # create function to run robust lm over all betas
 set.seed(1234)
 rlm_cb_no2 <- apply(cb_betas_geno_cc_clean, 1, function(x){
@@ -766,22 +755,22 @@ rlm_cb_no2 <- apply(cb_betas_geno_cc_clean, 1, function(x){
   
   # robust rlm function 
   model <- rlm(formula = dnam ~ no2_preg_entire + sex + gestational_days + pss_18wk +
-                         prenatal_maternal_smoking + maternal_education_length + 
-                         cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4  + 
-                         genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
-                         sv1 + sv2 + sv3 + sv4 + sv5 + sv6 + sv7 + sv8 + 
-                         sv9 + sv10 + sv11 + sv12 + sv13 + sv14,
+                 prenatal_maternal_smoking + maternal_education_length + 
+                 cbmc.PC1 + cbmc.PC2 + cbmc.PC3 + cbmc.PC4  + 
+                 genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+                 sv1 + sv2 + sv3 + sv4 + sv5 + sv6 + sv7 + sv8 + 
+                 sv9 + sv10 + sv11 + sv12 + sv13 + sv14,
                data = covariates_geno_ctpc_tech_cc,
                method = "M",
                scale.est = "Huber",
                maxit = 100)
-
+  
   sig_no2 <- wald.test(Sigma = vcov(model), b = coef(model), Terms = 2)
-
+  
   out <- c(model$coefficients,
            "converged" = model$converged,
            "sig_no2" = sig_no2$result$chi2)
-
+  
   out
 }) 
 
@@ -904,7 +893,7 @@ ggsave(plot = after_qqplot,
 
 pvector <- rlm_cb_no2_df %>% 
   subset(converged==1) %>%
-pull(sig_no2.P)
+  pull(sig_no2.P)
 
 pvector2 <- pvector[!is.na(pvector) & !is.nan(pvector) & !is.null(pvector) & 
                       is.finite(pvector) & pvector < 1 & pvector > 0]
@@ -943,86 +932,118 @@ ggsave(plot = rlm_qqplot,
        width = 6, height = 5, units = "cm")
 ```
 
-
-
-
 Direct comparison between limma pvalues, bacon corrected pvalues, and mass rlm pvalues
 ```{r pvalue_comparison}
 
 limma_mass <- ggplot(data = NULL,  
-                     aes(x=cb_pvals_tech$pval_no2_preg_entire, 
-                         y = rlm_cb_no2_df$sig_no2.P)) +
-  geom_point() +
+                     aes(x=cb_pvals_tech %>%
+                           subset(rownames(.) %in% rownames(rlm_cb_no2_df %>%
+                                                              subset(converged == 1))) %>%
+                           pull(pval_no2_preg_entire), 
+                         y = rlm_cb_no2_df %>%
+                           subset(converged == 1) %>%
+                           pull(sig_no2.P))) +
+  geom_point(alpha = 0.5) +
   geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
   theme_bw() +
-  labs(x = "Uncorrected limma p-values", "Mass rlm p-values")
+  labs(x = "Uncorrected limma p-values", y = "Mass RLM p-values")
 
 
 limma_mass_sig <- ggplot(data = NULL,  
-                     aes(x=cb_pvals_tech$pval_no2_preg_entire, 
-                         y = rlm_cb_no2_df$sig_no2.P)) +
-  geom_point() +
+                         aes(x=cb_pvals_tech %>%
+                               subset(rownames(.) %in% rownames(rlm_cb_no2_df %>%
+                                                                  subset(converged == 1))) %>%
+                               pull(pval_no2_preg_entire), 
+                             y = rlm_cb_no2_df %>%
+                               subset(converged == 1) %>%
+                               pull(sig_no2.P))) +
+  geom_point(alpha = 0.5) +
   geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
   theme_bw() +
-  labs(x = "Uncorrected limma p-values", "Mass rlm p-values") +
+  labs(x = "Uncorrected limma p-values", y="Mass RLM p-values") +
   xlim(0,0.0001) +
   ylim(0,0.0001)
 
 
 bacon_mass <- ggplot(data = NULL,  
-                     aes(x=cb_pvals_tech$pval_no2_preg_entire_bacon, 
-                         y = rlm_cb_no2_df$sig_no2.P)) +
-  geom_point() +
+                     aes(x=cb_pvals_tech %>%
+                           subset(rownames(.) %in% rownames(rlm_cb_no2_df %>%
+                                                              subset(converged == 1))) %>%
+                           pull(pval_no2_preg_entire_bacon), 
+                         y = rlm_cb_no2_df %>%
+                           subset(converged == 1) %>%
+                           pull(sig_no2.P))) +
+  geom_point(alpha = 0.5) +
   geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
   theme_bw() +
-  labs(x = "Uncorrected limma p-values", "Mass rlm p-values")
+  labs(x = "Bacon-corrected limma p-values", y="Mass RLM p-values")
 
 bacon_mass_sig <- ggplot(data = NULL,  
-                     aes(x=cb_pvals_tech$pval_no2_preg_entire_bacon, 
-                         y = rlm_cb_no2_df$sig_no2.P)) +
-  geom_point() +
+                         aes(x=cb_pvals_tech %>%
+                               subset(rownames(.) %in% rownames(rlm_cb_no2_df %>%
+                                                                  subset(converged == 1))) %>%
+                               pull(pval_no2_preg_entire_bacon), 
+                             y = rlm_cb_no2_df %>%
+                               subset(converged == 1) %>%
+                               pull(sig_no2.P))) +
+  geom_point(alpha = 0.5) +
   geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
   theme_bw() +
-  labs(x = "Uncorrected limma p-values", "Mass rlm p-values") +
+  labs(x = "Bacon-corrected limma p-values", y="Mass RLM p-values") +
   xlim(0,0.0001) +
   ylim(0,0.0001)
 ```
 
-Combine rlm pvalues with limma
-```{r rlm_limma}
-cb_pvals_tech_rlm <- cbind(cb_pvals_tech, rlm_cb_no2_df$sig_no2.P)
 
+Coeffecient direct comparison
+```{r compare_coefficients}
+limma_mass_coef <- ggplot(data = NULL,  
+                          aes(x=cb_pvals_tech %>%
+                                subset(rownames(.) %in% rownames(rlm_cb_no2_df %>%
+                                                                   subset(converged == 1))) %>%
+                                pull(coeff_no2_preg_entire), 
+                              y = rlm_cb_no2_df %>%
+                                subset(converged == 1) %>%
+                                pull(no2_preg_entire))) +
+  geom_point(alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
+  theme_bw() +
+  labs(x = "Limma coefficients", y = "Mass coefficients")
+limma_mass_coef
 ```
 
+
+Combine rlm pvalues with limma
+```{r combine_rlm_limma_pvals}
+cb_pvals_tech_rlm <- cbind(cb_pvals_tech, 
+                           rlm_cb_no2_df$no2_preg_entire,
+                           rlm_cb_no2_df$sig_no2.P,
+                           rlm_cb_no2_df$converged)
+```
 
 Delta beta
 ```{r db}
 range = max(covariates_geno_ctpc_tech_cc$no2_preg_entire) -
   min(covariates_geno_ctpc_tech_cc$no2_preg_entire)
 
-cb_pvals_tech$db <- cb_pvals_tech$coeff_no2_preg_entire * range
+cb_pvals_tech_rlm$limma_db <- cb_pvals_tech_rlm$coeff_no2_preg_entire * range
+cb_pvals_tech_rlm$mass_db <- cb_pvals_tech_rlm$`rlm_cb_no2_df$no2_preg_entire` * range
 ```
 
 
 Volcano plot
 ```{r volcano_db_tech}
 
-#make new column to label sig points with cpgid
-cb_pvals_tech$cpgid <- rownames(cb_pvals_tech)
-
-# plot that volcano
+# plot bacon-corrected pvalue volcano
 cb_volcano <- ggplot(cb_pvals_tech, 
-                     aes(x=as.numeric(db) , 
+                     aes(x=as.numeric(limma_db) , 
                          y=-log10(as.numeric(pval_no2_preg_entire_bacon)))) +
   geom_point(alpha=0.4, col = "#254A90", size=1) +
   # colour significant cpgs; 2.5% effect size cut off and FDR < 0.25
   geom_point(data=subset(cb_pvals_tech, 
-                         (pval_no2_preg_entire_bacon_adj < 0.25 & db > 0.025) | 
-                           (pval_no2_preg_entire_bacon_adj < 0.25 & db < -0.025)), 
+                         (pval_no2_preg_entire_bacon_adj < 0.25 & limma_db > 0.025) | 
+                           (pval_no2_preg_entire_bacon_adj < 0.25 & limma_db < -0.025)), 
              alpha=0.4, col = "red", size=1) + 
-  # horizontal lines for effect size cut offs
-  #geom_vline(xintercept = c(2.5, -2.5), linetype = "dashed", size=0.25) +
-  # aesthetics
   scale_x_continuous(breaks = seq(-0.50, 0.50, by = 0.10)) +
   labs(y="-log10(unadjusted p-value)", x = "Effect size (% DNAm)") +
   theme_bw() +
@@ -1034,17 +1055,58 @@ cb_volcano <- ggplot(cb_pvals_tech,
         axis.title = element_blank()) 
 cb_volcano
 
-ggsave(plot = cb_volcano,
-       filename = here("figures", 
-                       "linear_regression", 
-                       "prenatal", 
-                       "2022-05-10_cb_volcanoplot.png"),
-       width = 7.5, height = 6, units = "cm")
+# plot MASS RLM volcano
+cb_volcano_rlm <- ggplot(cb_pvals_tech_rlm %>%
+                           subset(`rlm_cb_no2_df$converged`==1), 
+                         aes(x=as.numeric(mass_db) , 
+                             y=-log10(as.numeric(`rlm_cb_no2_df$sig_no2.P`)))) +
+  geom_point(alpha=0.4, col = "#254A90", size=1) +
+  # colour significant cpgs; 2.5% effect size cut off and FDR < 0.25
+  geom_point(data=subset(cb_pvals_tech_rlm %>% 
+                           subset(`rlm_cb_no2_df$converged`==1) %>%
+                           mutate(adjp  = p.adjust(`rlm_cb_no2_df$sig_no2.P`, method = "BH")), 
+                         (adjp < 0.25 & mass_db > 0.025) | 
+                           (adjp < 0.25 & mass_db < -0.025)), 
+             alpha=0.4, col = "red", size=1) + 
+  scale_x_continuous(breaks = seq(-0.50, 0.50, by = 0.10)) +
+  labs(y="-log10(unadjusted p-value)", x = "Effect size (% DNAm)") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color ="black"),
+        axis.text.x = element_text(size=9),
+        axis.text.y = element_text(size=9),
+        axis.title = element_blank()) 
+cb_volcano_rlm
 ```
 
 
 Subset out important cpgs
 ```{r sig_cpgs_tables}
+
+# top 10 bacon
+bacontop <-  cb_pvals_tech_rlm %>%
+    subset(limma_db > 0.025 | limma_db < -0.025) %>% 
+  arrange(pval_no2_preg_entire_bacon_adj) %>%
+  slice_head(n=10)
+
+write.csv(bacontop, file= here("tables",
+                               "prenatal",
+                               "2022-05-31_bacon_top10.csv"))
+
+
+# top 10 mass
+rlmtop <-  cb_pvals_tech_rlm %>%
+  subset(`rlm_cb_no2_df$converged` ==1) %>%
+  mutate(`rlm_cb_no2_df$sig_no2.P_adj` = p.adjust(`rlm_cb_no2_df$sig_no2.P`, method = "BH")) %>%
+  subset(mass_db > 0.025 | mass_db < -0.025) %>% 
+  arrange(`rlm_cb_no2_df$sig_no2.P_adj`) %>%
+  slice_head(n=10)
+
+write.csv(rlmtop, file= here("tables",
+                             "prenatal",
+                             "2022-05-31_massrlm_top10.csv"))
+
 
 # add effect size to ebayes
 cb_ebayes$db <- cb_pvals_tech$db
