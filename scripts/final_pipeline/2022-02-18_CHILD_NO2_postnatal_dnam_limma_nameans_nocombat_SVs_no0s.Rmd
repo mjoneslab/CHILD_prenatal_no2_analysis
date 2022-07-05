@@ -1021,8 +1021,8 @@ volcano_plot <- ggplot(diff_pvals_tech,
                          (pval_no2_y1_entire_bacon_adj < 0.25 & db > 0.025) | 
                            (pval_no2_y1_entire_bacon_adj < 0.25 & db < -0.025)), 
              alpha=0.4, col = "red", size=1) + 
-  scale_x_continuous(limits = c(-0.50, 0.50), 
-                     breaks = seq(-0.50, 0.50, by = 0.10)) +
+  scale_x_continuous(limits = c(-0.20, 0.20), 
+                     breaks = seq(-0.20, 0.20, by = 0.1)) +
   labs(y="-log10(unadjusted p-value)", x = "Effect size (%)") +
   theme_bw() +
   theme(panel.grid = element_blank(),
@@ -1037,7 +1037,7 @@ ggsave(plot = volcano_plot,
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal", 
-                       "2022-05-10_pn_volcanoplot.png"),
+                       "2022-07-05_pn_volcanoplot.png"),
        width = 7.5, height = 6, units = "cm")
 ```
 
@@ -1897,26 +1897,28 @@ covariates_geno_ctpcs_tech_cc_not0$any_wheeze_y1 <-
 
 # reported wheeze
 cg07472943_wheeze <- ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
-                              dplyr::select(any_wheeze_y1, cg07472943) %>%
+                              dplyr::select(any_wheeze_y1, cg07472943, no2_y1_entire) %>%
                               na.omit(), 
-                            aes(x=as.factor(any_wheeze_y1), y=cg07472943)) +
+                            aes(x=as.factor(any_wheeze_y1), y=cg07472943, color = no2_y1_entire)) +
   geom_boxplot(alpha=0.6, outlier.shape = NA) +
-  geom_jitter(height=0, width=0.25, alpha=0.6, col = "#254A90", size=1) +
+  geom_jitter(height=0, width=0.25, alpha=0.8, size=1) +
+  scale_color_continuous() +
   theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.title = element_blank()) +
+        axis.title = element_blank(), 
+        legend.position = "none") +
   scale_y_continuous(limits=c(-0.06, 0.09)) +
   scale_x_discrete(labels = c("No", "Yes")) +
   ggsignif::geom_signif(comparisons = list(c("0", "1")),
                         annotations = "adj.p=0.09", 
                         textsize = 3,vjust = -0.25)
-
+# col = "#254A90"
 
 ggsave(plot = cg07472943_wheeze, 
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal", 
-                       "2022-05-09_cg07472943_wheeze.png"),
+                       "2022-07-05_cg07472943_wheeze_nolegend.png"),
        width = 5, height = 5, units = "cm")
 
 
@@ -1929,7 +1931,8 @@ cg07472943_wheeze_log <- glm(any_wheeze_y1 ~ cg07472943 +
                                celltype.PC7 +  
                                genotyping.PC1 + genotyping.PC2 + genotyping.PC3 +
                                sv1 + sv2 + sv3 + sv4 + sv5 + sv6 + sv7 + sv8 + 
-                               sv9 + sv10 + sv11 + sv12 + sv13 + sv14 + sv15,                          data=covariates_geno_ctpcs_tech_cc_not0[!is.na(covariates_geno_ctpcs_tech_cc_not0$any_wheeze_y1),],
+                               sv9 + sv10 + sv11 + sv12 + sv13 + sv14 + sv15,    
+                             data=covariates_geno_ctpcs_tech_cc_not0[!is.na(covariates_geno_ctpcs_tech_cc_not0$any_wheeze_y1),],
                              family = "binomial")
 
 summary(cg07472943_wheeze_log)

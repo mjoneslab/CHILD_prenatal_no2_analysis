@@ -1181,9 +1181,6 @@ write.csv(rlmtop, file= here("tables",
                              "ageone",
                              "2022-05-31_pn_massrlm_top10.csv"))
 
-
-
-
 # add db to e bayes
 diff_ebayes$db <- diff_pvals_tech$db
 
