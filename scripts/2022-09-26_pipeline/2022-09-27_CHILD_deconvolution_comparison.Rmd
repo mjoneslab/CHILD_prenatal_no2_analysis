@@ -1,0 +1,223 @@
+---
+title: "CHILD comparison of deconvolution methods for CBMC and PBMCs"
+author: "Samantha Lee"
+date: "2021-09-24"
+output: html_document
+---
+
+### Load libraries 
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(sva)
+library(minfi)
+library(ExperimentHub)
+library(FlowSorted.Blood.EPIC)
+library(FlowSorted.Blood.450k)
+library(FlowSorted.CordBloodCombined.450k)
+library(FlowSorted.CordBlood.450k)
+library(here)
+```
+
+Cell type deconvolution allows prediction of cell type proportions in cordblood and PMBCs. Cell type proprotions are corrected for in later analysis. 
+
+For deconvolution using estimateCellCounts2 or estimateCellCounts must use RGset (estimateCellCounts2 allows mset but functionality is reduced). CHILD rgset_nobadsamp has bad samples removed. Bad probes, cross reactive probes, xy probes, and SNP probes have not yet been removed.  
+
+### Load DNA methylation data and separate into cord and peripheral blood
+
+Load rgset_nobadsamp for deconvolution comparison.  
+```{r load_rgset}
+load(here("output_data", 
+          "preprocessed_data", 
+          "2022-09-27_child_rgset_nobadsamp.Rdata"))
+```
+
+Separate cordblood (CMBCs) and year 1 PMBCs.
+```{r separate_tissues}
+# correct sample mix up 
+# sample mix up was determined in preprocessing and analysis after rgset_nobadsamp was generated
+# tissue mix up for sample 20113 -> relabel
+rgset_nobadsamp$SampleID[5] <- "20113_P"
+rgset_nobadsamp$Tissue[5] <- "P"
+rgset_nobadsamp$SampleID[6] <- "20113_C"
+rgset_nobadsamp$Tissue[6] <- "C"
+
+# cord blood 
+cb_rgset <- rgset_nobadsamp[,rgset_nobadsamp$Tissue=="C"]
+dim(cb_rgset) 
+# 622399  153 
+# this data set contains duplicates - okay as increases internal consistency 
+
+# year 1 pmbcs
+y1_rgset <- rgset_nobadsamp[,rgset_nobadsamp$Tissue=="P"]
+dim(y1_rgset) 
+# 622399    145
+```
+
+
+Load improved estimated cell counts 2 function
+```{r load_estimatecellcounts2}
+source(here("scripts",
+            "2022-09-27_estimateCellCounts2v2.R"))
+```
+
+###  Cell type deconvolution of CBMCs (cord blood) and year 1 PBMCs using cordblood reference sets. 
+
+Cell type correction using estimateCellCounts2 and FlowSorted.CordBloodCombined.450k - without WBCs.  
+```{r child_fscbc_ecc2}
+hub <- ExperimentHub()
+myfiles <- query(hub, "FlowSorted.CordBloodCombined.450k")
+FlowSorted.CordBloodCombined.450k <- myfiles[[1]]
+FlowSorted.CordBloodCombined.450k
+
+# CBMCs (cordblood) with cord blood reference set 
+# dont include granulocytes since they are not expected in CBMCs
+child_fscbc_ecc2_cb_any <- 
+  estimateCellCounts2v2(rgSet = cb_rgset, 
+                        compositeCellType = "CordBlood",
+                        processMethod = "preprocessNoob",
+                        probeSelect = "any",
+                        cellTypes = c("CD4T","NK","nRBC","Bcell","Mono","CD8T"), 
+                        referencePlatform = "IlluminaHumanMethylation450k",
+                        referenceset = "FlowSorted.CordBloodCombined.450k",
+                        returnAll = FALSE) 
+
+# CBMCs (cordblood) with cord blood reference set 
+# dont include granulocytes since they are not expected in CBMCs
+# pick equal numbers of probes with magnitude of effect in both directions
+child_fscbc_ecc2_cb_both <- 
+  estimateCellCounts2v2(rgSet = cb_rgset, 
+                      compositeCellType = "CordBlood",
+                      processMethod = "preprocessNoob",
+                      probeSelect = "both",
+                      cellTypes = c("CD4T","NK","nRBC","Bcell","Mono","CD8T"), 
+                      referencePlatform = "IlluminaHumanMethylation450k",
+                      referenceset = "FlowSorted.CordBloodCombined.450k",
+                      returnAll = FALSE) 
+
+
+# year 1 PBMCs with cordblood reference set
+# dont include granulocytes or nRBCs since neither are expected in year 1 PBMCs
+child_fscbc_ecc2_y1_any <- 
+  estimateCellCounts2v2(rgSet = y1_rgset, 
+                      compositeCellType = "CordBlood",
+                      processMethod = "preprocessNoob",
+                      probeSelect = "any",
+                      cellTypes = c("CD4T","NK", "Bcell","Mono","CD8T"), 
+                      referencePlatform = "IlluminaHumanMethylation450k",
+                      referenceset = "FlowSorted.CordBloodCombined.450k",
+                      returnAll = FALSE) 
+
+# year 1 PBMCs with cordblood reference set
+# dont include granulocytes or nRBCs since neither are expected in year 1 PBMCs
+# pick 100 probes with magnitude of effect in both direction
+child_fscbc_ecc2_y1_both <- 
+  estimateCellCounts2v2(rgSet = y1_rgset, 
+                      compositeCellType = "CordBlood",
+                      processMethod = "preprocessNoob",
+                      probeSelect = "both",
+                      cellTypes = c("CD4T","NK", "Bcell","Mono","CD8T"), 
+                      referencePlatform = "IlluminaHumanMethylation450k",
+                      referenceset = "FlowSorted.CordBloodCombined.450k",
+                      returnAll = FALSE) 
+```
+
+```{r child_fscbc_ecc2_idol}
+# need epic loaded to use idol cordblood set
+hub <- ExperimentHub()
+myfiles <- query(hub, "FlowSorted.Blood.EPIC")
+FlowSorted.Blood.EPIC <- myfiles[[1]]
+FlowSorted.Blood.EPIC
+
+data("IDOLOptimizedCpGsCordBlood")
+
+# CBMCs (cordblood) with cord blood reference set and idol probes
+# dont include granulocytes since they are not expected in CBMCs
+child_fscbc_ecc2_cb_idol <-
+  estimateCellCounts2v2(cb_rgset, 
+                        compositeCellType = "CordBlood",
+                        processMethod = "preprocessNoob",
+                        probeSelect = "IDOL",
+                        cellTypes = c("CD4T","NK","nRBC","Bcell","Mono","CD8T"), 
+                        referencePlatform = "IlluminaHumanMethylation450k",
+                        referenceset = "FlowSorted.CordBloodCombined.450k",
+                        IDOLOptimizedCpGs = IDOLOptimizedCpGsCordBlood, 
+                        returnAll = FALSE) 
+
+
+# year 1 PBMCs with cordblood reference set using idol probes
+# # dont include granulocytes or nRBCs since neither are expected in year 1 PBMCs
+child_fscbc_ecc2_y1_idol <-
+  estimateCellCounts2v2(y1_rgset, 
+                        compositeCellType = "CordBlood",
+                        processMethod = "preprocessNoob",
+                        probeSelect = "IDOL",
+                        cellTypes = c("CD4T","NK", "Bcell","Mono","CD8T"), 
+                        referencePlatform = "IlluminaHumanMethylation450k",
+                        referenceset = "FlowSorted.CordBloodCombined.450k",
+                        IDOLOptimizedCpGs = IDOLOptimizedCpGsCordBlood, 
+                        returnAll = FALSE) 
+
+```
+
+
+###  Cell type deconvolution of year 1 PBMCs using adult reference sets. 
+
+Cell type correction using estimateCellCounts2 and FlowSorted.Blood.EPIC.  
+```{r child_fsbepic_ecc2}
+# dont include neutrophils since no granulocytes are here
+child_fsbepic_ecc2_y1_both <-
+  estimateCellCounts2v2(y1_rgset, 
+                        compositeCellType = "Blood",
+                        processMethod = "preprocessNoob",
+                        probeSelect = "both",
+                        cellTypes = c("NK","Bcell","CD4T","CD8T","Mono"), 
+                        referencePlatform = "IlluminaHumanMethylation450k",
+                        referenceset = "FlowSorted.Blood.EPIC",
+                        returnAll = FALSE) 
+
+
+child_fsbepic_ecc2_y1_idol <-
+  estimateCellCounts2v2(y1_rgset, 
+                        compositeCellType = "Blood",
+                        probeSelect = "IDOL",
+                        processMethod = "preprocessNoob",
+                        cellTypes = c("NK","Bcell","CD4T","CD8T","Mono"), 
+                        referencePlatform = "IlluminaHumanMethylation450k",
+                        referenceset = "FlowSorted.Blood.EPIC",
+                        IDOLOptimizedCpGs = IDOLOptimizedCpGs450klegacy, 
+                        returnAll = FALSE) 
+
+
+child_fsbepic_ecc2_y1_any <-
+  estimateCellCounts2v2(y1_rgset, 
+                        compositeCellType = "Blood",
+                        probeSelect = "any",
+                        processMethod = "preprocessNoob",
+                        cellTypes = c("NK","Bcell","CD4T","CD8T","Mono"), 
+                        referencePlatform = "IlluminaHumanMethylation450k",
+                        referenceset = "FlowSorted.Blood.EPIC",
+                        returnAll = FALSE) 
+```
+
+
+Save deconvolution data.    
+```{r deconvo_data}
+save(child_fscbc_ecc2_cb_any,
+     child_fscbc_ecc2_cb_both,
+     child_fscbc_ecc2_cb_idol,
+     
+     child_fscbc_ecc2_y1_any,
+     child_fscbc_ecc2_y1_both,
+     child_fscbc_ecc2_y1_idol,
+     
+     child_fsbepic_ecc2_y1_any,
+     child_fsbepic_ecc2_y1_both,
+     child_fsbepic_ecc2_y1_idol,
+     file=here("output_data", 
+               "deconvolution", 
+               "2022-09-28_CHILD_deconvolution_method_comparison.Rdata"))
+```
+
+
+

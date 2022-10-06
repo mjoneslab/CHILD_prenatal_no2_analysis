@@ -1,0 +1,918 @@
+---
+title: "CHILD visual comparison of deconvolution methods for CBMCs and PBMCs"
+author: "SL"
+date: "2021-09-25"
+output: html_document
+---
+
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggpubr)
+library(minfi)
+library(reshape2)
+library(ggsignif)
+library(here)
+```
+
+
+Load deconvolution data and pData of CHILD145.
+```{r load_workspace, message=FALSE, warning=FALSE}
+# deconvolution data
+load(here("output_data", 
+          "deconvolution", 
+          "2022-09-28_CHILD_deconvolution_method_comparison.Rdata"))
+
+# this pdata has bad samples removed, CBMC duplicate samples removed, and sample mix-up corrected
+load(here("output_data", 
+          "preprocessed_data", 
+          "2022-09-27_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
+
+# subset pData into CBMCs (cord blood) and PBMCs (year 1)
+cb_pdata <- subset(pdata_nodups, Tissue == "C")
+y1_pdata <- subset(pdata_nodups, Tissue == "P")
+```
+
+Convert CHILD cell type deconvolutions into data frames for plotting.  
+```{r convert_to_dataframes, message=FALSE, warning=FALSE}
+child_fscbc_ecc2_cb_any_df <- as.data.frame(child_fscbc_ecc2_cb_any$prop)
+child_fscbc_ecc2_cb_both_df <- as.data.frame(child_fscbc_ecc2_cb_both$prop)
+child_fscbc_ecc2_cb_idol_df <- as.data.frame(child_fscbc_ecc2_cb_idol$prop)
+
+child_fscbc_ecc2_y1_any_df <- as.data.frame(child_fscbc_ecc2_y1_any$prop) 
+child_fscbc_ecc2_y1_both_df <- as.data.frame(child_fscbc_ecc2_y1_both$prop)
+child_fscbc_ecc2_y1_idol_df <- as.data.frame(child_fscbc_ecc2_y1_idol$prop)
+
+child_fsbepic_ecc2_y1_any_df <- as.data.frame(child_fsbepic_ecc2_y1_any$prop)
+child_fsbepic_ecc2_y1_both_df <- as.data.frame(child_fsbepic_ecc2_y1_both$prop)
+child_fsbepic_ecc2_y1_idol_df <- as.data.frame(child_fsbepic_ecc2_y1_idol$prop)
+```
+
+Remove duplicate samples from cord blood estimates.
+```{r remove_cb_duplicates}
+# make list of samples to remove from beta and pData
+cb_dups <-c("9298768102_R06C01", "9341679111_R05C02", "9298768023_R03C02",
+            "9341679076_R06C02", "9297962089_R06C02", "9298768023_R02C02",
+            "9341679097_R02C02", "9341679114_R01C02", "9298768023_R06C01")
+
+# remove replicates from pData                        
+child_fscbc_ecc2_cb_any_df_nodups <-
+  child_fscbc_ecc2_cb_any_df[!rownames(child_fscbc_ecc2_cb_any_df) %in% cb_dups, ]
+
+child_fscbc_ecc2_cb_both_df_nodups <- 
+  child_fscbc_ecc2_cb_both_df[!rownames(child_fscbc_ecc2_cb_both_df) %in% cb_dups, ]
+
+child_fscbc_ecc2_cb_idol_df_nodups <-
+  child_fscbc_ecc2_cb_idol_df[!rownames(child_fscbc_ecc2_cb_idol_df) %in% cb_dups, ]
+```
+
+## Compare cell type deconvolution of CHILD data between different methods.  
+
+### Cord blood comparison methods
+
+Compare cell type deconvolution of cordblood using FlowSorted.CordBloodCombined.450k (with estimateCellCounts2 and any probes) and FlowSorted.CordBloodCombined.450k (using estimateCellCounts2 and "both" probes). 
+```{r child_fscbc_ecc2_cb_any_df_nodups_vs_child_fscbc_ecc2_cb_both_df_nodups}
+child_fscbc_ecc2_cb_any_df_nodups$tissue <- cb_pdata$Tissue 
+child_fscbc_ecc2_cb_any_df_nodups$sampleid <- cb_pdata$SampleID
+child_fscbc_ecc2_cb_any_df_nodups$method <- "FlowSorted.CordBloodCombined.450k.any"
+
+child_fscbc_ecc2_cb_both_df_nodups$tissue <- cb_pdata$Tissue 
+child_fscbc_ecc2_cb_both_df_nodups$sampleid <- cb_pdata$SampleID
+child_fscbc_ecc2_cb_both_df_nodups$method <- "FlowSorted.CordBloodCombined.450k.both"
+
+#convert dataframes to long format for facetting 
+child_fscbc_ecc2_cb_any_df_long <- gather(child_fscbc_ecc2_cb_any_df_nodups, celltype, percentage, CD4T:CD8T)
+child_fscbc_ecc2_cb_both_df_long <- gather(child_fscbc_ecc2_cb_both_df_nodups, celltype, percentage, CD4T:CD8T)
+
+
+#row bind two methods together
+child_fscbcany_fscbcboth <- rbind(child_fscbc_ecc2_cb_any_df_long,
+                                  child_fscbc_ecc2_cb_both_df_long) 
+
+#spread according to method
+child_fscbcany_fscbcboth_wide <- spread(child_fscbcany_fscbcboth, method, percentage )
+
+
+child_fscbcany_fscbcboth_wide_plot <- ggplot(child_fscbcany_fscbcboth_wide, 
+                                             aes(x=FlowSorted.CordBloodCombined.450k.any,
+                                                 y=FlowSorted.CordBloodCombined.450k.both)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1, linetype="solid") +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="CordBloodCombined.450k 'any'", y = "CordBloodCombined.450k 'both'") +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank()) 
+child_fscbcany_fscbcboth_wide_plot
+
+ggsave(plot = child_fscbcany_fscbcboth_wide_plot, 
+       file=here("figures", 
+                 "deconvolution", 
+                 "2022-09-27_CHILD_cb_fscbcboth_fscbcany.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+Compare cell type deconvolution of cordblood using FlowSorted.CordBloodCombined.450k (with estimateCellCounts2) and FlowSorted.CordBloodCombined.450k (using estimateCellCounts2 and IDOL probes).  
+```{r child_fscbc_ecc2_any_df vs child_fscbc_ecc2_idol_df, message=FALSE, warning=FALSE}
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fscbc_ecc2_cb_any_df_nodups$tissue <- cb_pdata$Tissue 
+child_fscbc_ecc2_cb_any_df_nodups$sampleid <- cb_pdata$SampleID
+child_fscbc_ecc2_cb_any_df_nodups$method <- "FlowSorted.CordBloodCombined.450k.any"
+
+child_fscbc_ecc2_cb_idol_df_nodups$tissue <- cb_pdata$Tissue 
+child_fscbc_ecc2_cb_idol_df_nodups$sampleid <- cb_pdata$SampleID
+child_fscbc_ecc2_cb_idol_df_nodups$method <- "FlowSorted.CordBloodCombined.450k.IDOL"
+
+#convert dataframes to long format for facetting 
+child_fscbc_ecc2_cb_any_df_long <- gather(child_fscbc_ecc2_cb_any_df_nodups, celltype, percentage, CD4T:CD8T)
+child_fscbc_ecc2_cb_idol_df_long <- gather(child_fscbc_ecc2_cb_idol_df_nodups, celltype, percentage, CD4T:CD8T)
+
+#row bind two methods together
+child_fscbc_fscbcidol <- rbind(child_fscbc_ecc2_cb_any_df_long, 
+                               child_fscbc_ecc2_cb_idol_df_long) 
+
+#spread according to method
+child_fscbc_fscbcidol_wide <- spread(child_fscbc_fscbcidol, method, percentage )
+
+child_fscbc_fscbcidol_wide_plot <- 
+  ggplot(child_fscbc_fscbcidol_wide, 
+         aes(x=FlowSorted.CordBloodCombined.450k.any,
+             y=FlowSorted.CordBloodCombined.450k.IDOL)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1, linetype="solid") +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="CordBloodCombined.450k 'any'", y = "CordBloodCombined.450k 'IDOL'") +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank()) 
+child_fscbc_fscbcidol_wide_plot
+
+ggsave(plot = child_fscbc_fscbcidol_wide_plot,
+       file=here("figures", 
+                 "deconvolution", 
+                 "2022-09-27_CHILD_cb_fscbcidol_fscbcany.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+Compare cell type deconvolution of cordblood using FlowSorted.CordBloodCombined.450k (with estimateCellCounts2 and both probes) and FlowSorted.CordBloodCombined.450k (using estimateCellCounts2 and "IDOL" probes). 
+```{r child_fscbc_ecc2_cb_df_nodups_vs_child_fscbc_ecc2_cb_both_df_nodups}
+child_fscbc_ecc2_cb_both_df_nodups$tissue <- cb_pdata$Tissue 
+child_fscbc_ecc2_cb_both_df_nodups$sampleid <- cb_pdata$SampleID
+child_fscbc_ecc2_cb_both_df_nodups$method <- "FlowSorted.CordBloodCombined.450k.both"
+
+child_fscbc_ecc2_cb_idol_df_nodups$tissue <- cb_pdata$Tissue 
+child_fscbc_ecc2_cb_idol_df_nodups$sampleid <- cb_pdata$SampleID
+child_fscbc_ecc2_cb_idol_df_nodups$method <- "FlowSorted.CordBloodCombined.450k.IDOL"
+
+#convert dataframes to long format for facetting 
+child_fscbc_ecc2_cb_both_df_long <- gather(child_fscbc_ecc2_cb_both_df_nodups, celltype, percentage, CD4T:CD8T)
+child_fscbc_ecc2_cb_idol_df_long <- gather(child_fscbc_ecc2_cb_idol_df_nodups, celltype, percentage, CD4T:CD8T)
+
+#row bind two methods together
+child_fscbcboth_fscbcidol <- rbind(child_fscbc_ecc2_cb_both_df_long,
+                                   child_fscbc_ecc2_cb_idol_df_long) 
+
+#spread according to method
+child_fscbcboth_fscbcidol_wide <- spread(child_fscbcboth_fscbcidol, method, percentage )
+
+child_fscbcboth_fscbcidol_wide_plot <- 
+  ggplot(child_fscbcboth_fscbcidol_wide, 
+         aes(x=FlowSorted.CordBloodCombined.450k.both,
+             y=FlowSorted.CordBloodCombined.450k.IDOL)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="CordBloodCombined.450k 'both'", y = "CordBloodCombined.450k 'IDOL'") +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank()) 
+child_fscbcboth_fscbcidol_wide_plot
+
+ggsave(plot = child_fscbcboth_fscbcidol_wide_plot,
+       file=here("figures", 
+                 "deconvolution", 
+                 "2022-09-27_cb_fscbcidol_fscbcboth.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+
+Compare max and min cell type predictions in cord blood probe sets any, both, and idol.
+```{r compare_max_min}
+#any
+print("any")
+min(child_fscbc_ecc2_cb_any_df_nodups[,1:6])
+max(child_fscbc_ecc2_cb_any_df_nodups[,1:6])
+
+#both
+print("both")
+min(child_fscbc_ecc2_cb_both_df_nodups[,1:6])
+max(child_fscbc_ecc2_cb_both_df_nodups[,1:6])
+
+#idol
+print("idol cord blood")
+min(child_fscbc_ecc2_cb_idol_df_nodups[,1:6])
+max(child_fscbc_ecc2_cb_idol_df_nodups[,1:6])
+```
+
+
+Make boxplot of cordblood nRBCs and label samples to find ones that have abnormally high predicted nRBC proportion.
+```{r nRBCs_proprotions}
+#from deconvolution with FlowSorted.CordBloodCombined.450k using estimateCellCounts2 (no idol probes)
+ggplot(subset(child_fscbc_ecc2_cb_any_df_long, celltype=="nRBC"), aes(x=celltype, y=percentage)) +
+  geom_boxplot(stat = "boxplot",position = "dodge2") +
+  ggrepel::geom_text_repel(aes(label=sampleid))
+
+#from deconvolution with FlowSorted.CordBloodCombined.450k using estimateCellCounts2 with IDOL probes
+ggplot(subset(child_fscbc_ecc2_cb_idol_df_long, celltype=="nRBC"), aes(x=celltype, y=percentage)) +
+  geom_boxplot(stat = "boxplot",position = "dodge2") +
+  ggrepel::geom_text_repel(aes(label=sampleid))
+```
+
+## Year1 PBMCs comparison methods  
+
+### PBMCs with CordBlood Combined
+
+Compare cell type deconvolution of year1 PMBCs (no granulocytes no nRBCs) between FlowSorted.CordBloodCombined.450k (using estimateCellCounts2 and any probes) and FlowSorted.CordBloodCombined.450k (using estimateCellCounts2 and probeselect-borth)
+```{r y1_fscbanyc_fscbcboth, message=FALSE, warning=FALSE}
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fscbc_ecc2_y1_any_df$tissue <- y1_pdata$Tissue 
+child_fscbc_ecc2_y1_any_df$sampleid <- y1_pdata$SampleID
+child_fscbc_ecc2_y1_any_df$method <- "FlowSorted.CordBloodCombined.450k.any"
+
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fscbc_ecc2_y1_both_df$tissue <- y1_pdata$Tissue 
+child_fscbc_ecc2_y1_both_df$sampleid <- y1_pdata$SampleID
+child_fscbc_ecc2_y1_both_df$method <- "FlowSorted.CordBloodCombined.450k.both"
+
+#convert dataframes to long format for facetting 
+child_fscbc_ecc2_y1_any_df_long <- gather(child_fscbc_ecc2_y1_any_df, 
+                                          celltype, percentage, CD4T:CD8T)
+
+child_fscbc_ecc2_y1_both_df_long <- gather(child_fscbc_ecc2_y1_both_df, 
+                                           celltype, percentage, CD4T:CD8T)
+
+#row bind two methods together
+child_y1_fscbcany_fscbcboth <- rbind(child_fscbc_ecc2_y1_any_df_long, 
+                                     child_fscbc_ecc2_y1_both_df_long) 
+
+#spread according to method
+child_y1_fscbcany_fscbcboth_wide <- spread(child_y1_fscbcany_fscbcboth, 
+                                           method, 
+                                           percentage)
+
+child_y1_fscbcany_fscbcboth_wide_plot <-
+  ggplot(child_y1_fscbcany_fscbcboth_wide, 
+         aes(x=FlowSorted.CordBloodCombined.450k.any,
+             y=FlowSorted.CordBloodCombined.450k.both)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="CordBloodCombined.450k 'any'", y = "CordBloodCombined.450k 'both'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+child_y1_fscbcany_fscbcboth_wide_plot
+
+ggsave(plot = child_y1_fscbcany_fscbcboth_wide_plot,
+       file = here("figures", 
+                   "deconvolution", 
+                   "2022-09-28_y1_fscbcany_fscbcboth.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+Compare cell type deconvolution of year1 PMBCs (no granulocytes no nRBCs) between FlowSorted.CordBloodCombined.450k (using estimateCellCounts2 and no IDOL) and FlowSorted.CordBloodCombined.450k (using estimateCellCounts2 WITH IDOL) 
+```{r y1_fscbcasny_fscbcidol, message=FALSE, warning=FALSE}
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fscbc_ecc2_y1_idol_df$tissue <- y1_pdata$Tissue 
+child_fscbc_ecc2_y1_idol_df$sampleid <- y1_pdata$SampleID
+child_fscbc_ecc2_y1_idol_df$method <- "FlowSorted.CordBloodCombined.450k.IDOL"
+
+child_fscbc_ecc2_y1_any_df$tissue <- y1_pdata$Tissue 
+child_fscbc_ecc2_y1_any_df$sampleid <- y1_pdata$SampleID
+child_fscbc_ecc2_y1_any_df$method <- "FlowSorted.CordBloodCombined.450k.any"
+
+#convert dataframes to long format for facetting 
+child_fscbc_ecc2_y1_any_df_long <- gather(child_fscbc_ecc2_y1_any_df, 
+                                          celltype, percentage, CD4T:CD8T)
+child_fscbc_ecc2_y1_idol_df_long <- gather(child_fscbc_ecc2_y1_idol_df, 
+                                           celltype, percentage, CD4T:CD8T)
+
+#row bind two methods together
+child_y1_fscbcany_fscbcidol <- rbind(child_fscbc_ecc2_y1_any_df_long, 
+                                     child_fscbc_ecc2_y1_idol_df_long) 
+
+#spread according to method
+child_y1_fscbcany_fscbcidol_wide <- spread(child_y1_fscbcany_fscbcidol,
+                                           method, 
+                                           percentage)
+
+child_y1_fscbcany_fscbcidol_wide_plot <-
+  ggplot(child_y1_fscbcany_fscbcidol_wide, 
+         aes(x=FlowSorted.CordBloodCombined.450k.any,
+             y=FlowSorted.CordBloodCombined.450k.IDOL)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="CordBloodCombined 'any'", y = "CordBloodCombined 'IDOL'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  theme_bw() +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank()) 
+child_y1_fscbcany_fscbcidol_wide_plot
+
+ggsave(plot = child_y1_fscbcany_fscbcidol_wide_plot,
+       file = here("figures", 
+                   "deconvolution", 
+                   "2021-09-24_y1_fscbcany_fscbcidol.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+Compare cell type deconvolution of year1 PMBCs (no granulocytes no nRBCs) between FlowSorted.CordBloodCombined.450k (using estimateCellCounts2) and FlowSorted.Blood.EPIC (using estimateCellCounts2).  
+```{r y1_fscbcboth_fscbcidol, message=FALSE, warning=FALSE}
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fscbc_ecc2_y1_idol_df$tissue <- y1_pdata$Tissue 
+child_fscbc_ecc2_y1_idol_df$sampleid <- y1_pdata$SampleID
+child_fscbc_ecc2_y1_idol_df$method <- "FlowSorted.CordBloodCombined.IDOL"
+
+child_fscbc_ecc2_y1_both_df$tissue <- y1_pdata$Tissue 
+child_fscbc_ecc2_y1_both_df$sampleid <- y1_pdata$SampleID
+child_fscbc_ecc2_y1_both_df$method <- "FlowSorted.CordBloodCombined.both"
+
+#convert dataframes to long format for facetting 
+child_fscbc_ecc2_y1_idol_df_long <- gather(child_fscbc_ecc2_y1_idol_df, 
+                                           celltype, percentage, CD4T:CD8T)
+child_fscbc_ecc2_y1_both_df_long <- gather(child_fscbc_ecc2_y1_both_df, 
+                                           celltype, percentage, CD4T:CD8T)
+
+#row bind two methods together
+child_y1_fscbcidol_fscbcboth <- rbind(child_fscbc_ecc2_y1_idol_df_long,
+                                      child_fscbc_ecc2_y1_both_df_long) 
+
+#spread according to method
+child_y1_fscbcidol_fscbcboth_wide <- spread(child_y1_fscbcidol_fscbcboth,
+                                            method, 
+                                            percentage)
+
+child_y1_fscbcidol_fscbcboth_wide_plot <-
+  ggplot(child_y1_fscbcidol_fscbcboth_wide, aes(x=FlowSorted.CordBloodCombined.both,
+                                                y=FlowSorted.CordBloodCombined.IDOL)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="CordBloodCombined.450k 'both'", y = "CordBloodCombined.450k 'IDOL'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank()) 
+child_y1_fscbcidol_fscbcboth_wide_plot
+
+ggsave(plot = child_y1_fscbcidol_fscbcboth_wide_plot,
+       file = here("figures", 
+                   "deconvolution", 
+                   "2022-09-27_y1_fscbcboth_fscbcidol.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+#### PBMCs with adult blood
+
+Compare cell type deconvolution of year1 PMBCs (no granulocytes and WITH nRBCs) between FlowSorted.Blood.EPIC (using estimateCellCounts2 with any probe) and FlowSorted.Blood.EPIC (using estimateCellCounts2 with both probes).  
+```{r y1_epicany_epicboth, message=FALSE, warning=FALSE}
+child_fsbepic_ecc2_y1_both_df$tissue <- y1_pdata$Tissue 
+child_fsbepic_ecc2_y1_both_df$sampleid <- y1_pdata$SampleID
+child_fsbepic_ecc2_y1_both_df$method <- "FlowSorted.Blood.EPIC.both"
+
+child_fsbepic_ecc2_y1_any_df$tissue <- y1_pdata$Tissue 
+child_fsbepic_ecc2_y1_any_df$sampleid <- y1_pdata$SampleID
+child_fsbepic_ecc2_y1_any_df$method <- "FlowSorted.Blood.EPIC.any"
+
+#convert dataframes to long format for facetting 
+child_fsbepic_ecc2_y1_any_df_long <- gather(child_fsbepic_ecc2_y1_any_df, 
+                                            celltype, percentage, NK:Mono)
+child_fsbepic_ecc2_y1_both_df_long <- gather(child_fsbepic_ecc2_y1_both_df, 
+                                             celltype, percentage, NK:Mono)
+
+child_y1_fsbepicboth_fsbepicany <- rbind(child_fsbepic_ecc2_y1_any_df_long, 
+                                         child_fsbepic_ecc2_y1_both_df_long) 
+
+#spread according to method
+child_y1_fsbepicboth_fsbepicany_wide <- spread(child_y1_fsbepicboth_fsbepicany, 
+                                               method, 
+                                               percentage)
+
+child_y1_fsbepicboth_fsbepicany_wide_plot <- 
+  ggplot(child_y1_fsbepicboth_fsbepicany_wide, 
+         aes(y=FlowSorted.Blood.EPIC.both,
+             x=FlowSorted.Blood.EPIC.any)) +
+  geom_point(aes(col=celltype), size=1, alpha = 0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(y="Blood.EPIC 'both'", x = "Blood.EPIC 'any'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid = element_blank())
+child_y1_fsbepicboth_fsbepicany_wide_plot
+
+ggsave(plot = child_y1_fsbepicboth_fsbepicany_wide_plot,
+       file = here("figures", 
+                   "deconvolution", 
+                   "2022-09-27_y1_fsbepicboth_fsbepicany.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+Compare cell type deconvolution of year1 PMBCs (no granulocytes and no nRBCs) between FlowSorted.Blood.EPIC (using estimateCellCounts2 no IDOL probes) and FlowSorted.Blood.EPIC (using estimateCellCounts2 with IDOL probes).  
+```{r y1_fsbepicboth_fsbepicidol, message=FALSE, warning=FALSE}
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fsbepic_ecc2_y1_both_df$tissue <- y1_pdata$Tissue 
+child_fsbepic_ecc2_y1_both_df$sampleid <- y1_pdata$SampleID
+child_fsbepic_ecc2_y1_both_df$method <- "FlowSorted.Blood.EPIC.both"
+
+child_fsbepic_ecc2_y1_idol_df$tissue <- y1_pdata$Tissue 
+child_fsbepic_ecc2_y1_idol_df$sampleid <- y1_pdata$SampleID
+child_fsbepic_ecc2_y1_idol_df$method <- "FlowSorted.Blood.EPIC.IDOL"
+
+#convert dataframes to long format for facetting 
+child_fsbepic_ecc2_y1_both_df_long <- gather(child_fsbepic_ecc2_y1_both_df, 
+                                             celltype, percentage, NK:Mono)
+child_fsbepic_ecc2_y1_idol_df_long <- gather(child_fsbepic_ecc2_y1_idol_df, 
+                                             celltype, percentage, NK:Mono)
+
+#row bind two methods together
+child_y1_fsbepicboth_fsbepicidol <- rbind(child_fsbepic_ecc2_y1_both_df_long,
+                                          child_fsbepic_ecc2_y1_idol_df_long) 
+
+#spread according to method
+child_y1_fsbepicboth_fsbepicidol_wide <- 
+  spread(child_y1_fsbepicboth_fsbepicidol, method, percentage)
+
+child_y1_fsbepicboth_fsbepicidol_wide_plot <- 
+  ggplot(child_y1_fsbepicboth_fsbepicidol_wide, aes(x=FlowSorted.Blood.EPIC.both,
+                                                    y=FlowSorted.Blood.EPIC.IDOL)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="Blood.EPIC 'both'", y = "Blood.EPIC 'IDOL'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid = element_blank()) 
+child_y1_fsbepicboth_fsbepicidol_wide_plot
+
+ggsave(plot = child_y1_fsbepicboth_fsbepicidol_wide_plot,
+       file = here("figures", 
+                   "deconvolution", 
+                   "2022-09-27_y1_fsbepicboth_fsbepicidol.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+Compare cell type deconvolution of year1 PMBCs (no granulocytes and no nRBCs) between FlowSorted.Blood.EPIC (using estimateCellCounts2 with any probes) and FlowSorted.Blood.EPIC (using estimateCellCounts2 with IDOL probes).  
+```{r y1_fsbepicany_fsbepicidol, message=FALSE, warning=FALSE}
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fsbepic_ecc2_y1_any_df$tissue <- y1_pdata$Tissue 
+child_fsbepic_ecc2_y1_any_df$sampleid <- y1_pdata$SampleID
+child_fsbepic_ecc2_y1_any_df$method <- "FlowSorted.Blood.EPIC.any"
+
+child_fsbepic_ecc2_y1_idol_df$tissue <- y1_pdata$Tissue 
+child_fsbepic_ecc2_y1_idol_df$sampleid <- y1_pdata$SampleID
+child_fsbepic_ecc2_y1_idol_df$method <- "FlowSorted.Blood.EPIC.IDOL"
+
+#convert dataframes to long format for facetting 
+child_fsbepic_ecc2_y1_any_df_long <- gather(child_fsbepic_ecc2_y1_any_df, 
+                                            celltype, percentage, NK:Mono)
+
+child_fsbepic_ecc2_y1_idol_df_long <- gather(child_fsbepic_ecc2_y1_idol_df, 
+                                             celltype, percentage, NK:Mono)
+
+#row bind two methods together
+child_y1_fsbepicany_fsbepicidol <- rbind(child_fsbepic_ecc2_y1_any_df_long,
+                                         child_fsbepic_ecc2_y1_idol_df_long) 
+
+#spread according to method
+child_y1_fsbepicany_fsbepicidol_wide <- spread(child_y1_fsbepicany_fsbepicidol, 
+                                               method, percentage)
+
+child_y1_fsbepicany_fsbepicidol_wide_plot <- 
+  ggplot(child_y1_fsbepicany_fsbepicidol_wide, 
+         aes(x=FlowSorted.Blood.EPIC.any,
+             y=FlowSorted.Blood.EPIC.IDOL)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="Blood.EPIC 'any'", y = "Blood.EPIC 'IDOL'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid = element_blank()) 
+child_y1_fsbepicany_fsbepicidol_wide_plot
+
+ggsave(plot = child_y1_fsbepicany_fsbepicidol_wide_plot,
+       file = here("figures", 
+                   "deconvolution", 
+                   "2022-09-28_y1_fsbepicany_fsbepicidol.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+#### PBMCs comparing CordBlood to adult blood datasets
+
+Compare cell type deconvolution of year1 PMBCs (no granulocytes no nRBCs) between FlowSorted.CordBloodCombined.450k any (using estimateCellCounts2) and FlowSorted.Blood.EPIC any (using estimateCellCounts2).  
+```{r y1_fscbcany_epicany, message=FALSE, warning=FALSE}
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fscbc_ecc2_y1_any_df$tissue <- y1_pdata$Tissue 
+child_fscbc_ecc2_y1_any_df$sampleid <- y1_pdata$SampleID
+child_fscbc_ecc2_y1_any_df$method <- "FlowSorted.CordBloodCombined.450k"
+
+child_fsbepic_ecc2_y1_any_df$tissue <- y1_pdata$Tissue 
+child_fsbepic_ecc2_y1_any_df$sampleid <- y1_pdata$SampleID
+child_fsbepic_ecc2_y1_any_df$method <- "FlowSorted.Blood.EPIC.any"
+
+#convert dataframes to long format for facetting 
+child_fscbc_ecc2_y1_any_df_long <- gather(child_fscbc_ecc2_y1_any_df, 
+                                          celltype, percentage, CD4T:CD8T)
+
+child_fsbepic_ecc2_y1_any_df_long <- gather(child_fsbepic_ecc2_y1_any_df, 
+                                            celltype, percentage, NK:Mono)
+
+#row bind two methods together
+child_y1_fscbcany_fsbepicany <- rbind(child_fscbc_ecc2_y1_any_df_long,
+                                      child_fsbepic_ecc2_y1_any_df_long) 
+
+#spread according to method
+child_y1_fscbcany_fsbepicany_wide <- spread(child_y1_fscbcany_fsbepicany, 
+                                            method, percentage )
+
+child_y1_fscbcany_fsbepicany_wide_plot <-
+  ggplot(child_y1_fscbcany_fsbepicany_wide, aes(x=FlowSorted.CordBloodCombined.450k,
+                                                y=FlowSorted.Blood.EPIC.any)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="CordBloodCombined.450k 'any'", y = "Blood.EPIC 'any'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid = element_blank()) 
+child_y1_fscbcany_fsbepicany_wide_plot
+
+ggsave(plot = child_y1_fscbcany_fsbepicany_wide_plot,
+       file = here("figures", 
+                   "deconvolution", 
+                   "2022-09-28_y1_fscbcany_fsbepicany.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+
+Compare cell type deconvolution of year1 PMBCs (no granulocytes no nRBCs) between FlowSorted.CordBloodCombined.450k any (using estimateCellCounts2) and FlowSorted.Blood.EPIC any (using estimateCellCounts2).  
+```{r y1_fscbcany_epicboth, message=FALSE, warning=FALSE}
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fscbc_ecc2_y1_any_df$tissue <- y1_pdata$Tissue 
+child_fscbc_ecc2_y1_any_df$sampleid <- y1_pdata$SampleID
+child_fscbc_ecc2_y1_any_df$method <- "FlowSorted.CordBloodCombined.450k"
+
+child_fsbepic_ecc2_y1_both_df$tissue <- y1_pdata$Tissue 
+child_fsbepic_ecc2_y1_both_df$sampleid <- y1_pdata$SampleID
+child_fsbepic_ecc2_y1_both_df$method <- "FlowSorted.Blood.EPIC.both"
+
+#convert dataframes to long format for facetting 
+child_fscbc_ecc2_y1_any_df_long <- gather(child_fscbc_ecc2_y1_any_df, 
+                                          celltype, percentage, CD4T:CD8T)
+
+child_fsbepic_ecc2_y1_both_df_long <- gather(child_fsbepic_ecc2_y1_both_df, 
+                                             celltype, percentage, NK:Mono)
+
+#row bind two methods together
+child_y1_fscbcany_fsbepicboth <- rbind(child_fscbc_ecc2_y1_any_df_long,
+                                       child_fsbepic_ecc2_y1_both_df_long) 
+
+#spread according to method
+child_y1_fscbcany_fsbepicboth_wide <- spread(child_y1_fscbcany_fsbepicboth,
+                                             method, percentage )
+
+child_y1_fscbcany_fsbepicboth_wide_plot <- 
+  ggplot(child_y1_fscbcany_fsbepicboth_wide, aes(x=FlowSorted.CordBloodCombined.450k,
+                                                 y=FlowSorted.Blood.EPIC.both)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="CordBloodCombined.450k 'any'", y = "Blood.EPIC 'both'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid = element_blank()) 
+child_y1_fscbcany_fsbepicboth_wide_plot
+
+ggsave(plot = child_y1_fscbcany_fsbepicboth_wide_plot,
+       file = here("figures", 
+                   "deconvolution", 
+                   "2022-09-28_y1_fscbcany_fsbepicboth.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+
+
+Compare cell type deconvolution of year1 PMBCs (no granulocytes no nRBCs) between FlowSorted.CordBloodCombined.450k (using estimateCellCounts2 and probeselect=any) and FlowSorted.Blood.EPIC (using estimateCellCounts2 with IDOL).  
+```{r y1_fscbcany_fsbepicidol, message=FALSE, warning=FALSE}
+#add tissue and sampleid info to child fscbc and fscb450 dataframes
+child_fscbc_ecc2_y1_any_df$tissue <- y1_pdata$Tissue 
+child_fscbc_ecc2_y1_any_df$sampleid <- y1_pdata$SampleID
+child_fscbc_ecc2_y1_any_df$method <- "FlowSorted.CordBloodCombined.450k.any"
+
+child_fsbepic_ecc2_y1_idol_df$tissue <- y1_pdata$Tissue 
+child_fsbepic_ecc2_y1_idol_df$sampleid <- y1_pdata$SampleID
+child_fsbepic_ecc2_y1_idol_df$method <- "FlowSorted.Blood.EPIC.IDOL"
+
+#convert dataframes to long format for facetting 
+child_fscbc_ecc2_y1_any_df_long <- gather(child_fscbc_ecc2_y1_any_df, 
+                                          celltype, percentage, CD4T:CD8T)
+child_fsbepic_ecc2_y1_idol_df_long <- gather(child_fsbepic_ecc2_y1_idol_df, 
+                                             celltype, percentage, NK:Mono)
+
+#row bind two methods together
+child_y1_fscbcany_fsbepicidol <- rbind(child_fscbc_ecc2_y1_any_df_long,
+                                       child_fsbepic_ecc2_y1_idol_df_long) 
+
+#spread according to method
+child_y1_fscbcany_fsbepicidol_wide <- spread(child_y1_fscbcany_fsbepicidol, 
+                                             method, percentage)
+
+child_y1_fscbcany_fsbepicidol_wide_plot <- 
+  ggplot(child_y1_fscbcany_fsbepicidol_wide, 
+         aes(x=FlowSorted.CordBloodCombined.450k.any,
+             y=FlowSorted.Blood.EPIC.IDOL)) +
+  geom_point(aes(col=celltype), size=1, alpha=0.6) +
+  facet_wrap( ~ celltype, ncol=2) +  
+  geom_abline(intercept=0,slope=1) +
+  stat_cor(method="pearson", size=2, label.x.npc = 0.35, label.y.npc = 0.1) +
+  scale_color_manual(values = c("#0B5351", "#AB9B96", "#A1674A", 
+                                "#BA6E6E", "#498A9E", "#931621")) + 
+  labs(x="CordBloodCombined.450k 'any'", y = "Blood.EPIC 'IDOL'") +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.2), limits = c(0,0.6)) +
+  
+  theme_bw() +
+  theme(legend.position ="none",
+        axis.text.x = element_text(size=7),
+        axis.text.y = element_text(size=7),
+        axis.title.x = element_text(size=7),
+        axis.title.y = element_text(size=7),
+        strip.text.x = element_text(size = 6),
+        panel.grid = element_blank()) 
+child_y1_fscbcany_fsbepicidol_wide_plot
+
+ggsave(plot = child_y1_fscbcany_fsbepicidol_wide_plot,
+       file = here("figures", 
+                   "deconvolution", 
+                   "2022-09-28_y1_fscbcany_fsbepicidol.png"),
+       width = 8,
+       height = 6.5,
+       units = "cm",
+       limitsize = TRUE)
+```
+
+Compare max and min cell type predictions in age one PBMC sets.
+```{r compare_max_min_y1}
+#adult ref set with probe select = both
+print("FlowSorted.Blood.EPIC probeselect=both")
+min(child_fsbepic_ecc2_y1_both_df[,1:5])
+max(child_fsbepic_ecc2_y1_both_df[,1:5])
+
+#adult ref set with adult idol probes
+print("FlowSorted.Blood.EPIC adult IDOL probes")
+min(child_fsbepic_ecc2_y1_idol_df[,1:5])
+max(child_fsbepic_ecc2_y1_idol_df[,1:5])
+
+#cord blood reference set with probe select = any
+print("FlowSorted.CordBloodCombined.450k probeselect=any")
+min(child_fscbc_ecc2_y1_any_df[,c(1:5)])
+max(child_fscbc_ecc2_y1_any_df[,c(1:5)])
+```
+
+### Compare cell type proportions between age groups using boxplots
+
+Compare cell type proportions between birth (using FlowSorted.CordBloodCombined.450k and any probes) and age 1 (using FlowSorted.CordBloodCombined.450k any).
+```{r boxplot_cbany_y1any}
+#substring sample id so that numbering is consistent between birth and age one
+child_fscbc_ecc2_cb_any_df_nodups$sampleid <-
+  substr(child_fscbc_ecc2_cb_any_df_nodups$sampleid, 1, 5)
+child_fscbc_ecc2_y1_any_df$sampleid <- 
+  substr(child_fscbc_ecc2_y1_any_df$sampleid, 1, 5) 
+
+#populate nRBC column in age1 group with NA
+child_fscbc_ecc2_y1_any_df$nRBC <- NA
+
+#rearrange columns so that they are in the same order
+child_fscbc_ecc2_y1_any_df <- 
+  child_fscbc_ecc2_y1_any_df[colnames(child_fscbc_ecc2_cb_any_df_nodups)]
+#check column order
+head(child_fscbc_ecc2_y1_any_df)
+head(child_fscbc_ecc2_cb_any_df_nodups)
+
+#subset age one data so that only samples with data at both birth and age one are plotted/tests
+child_fscbc_ecc2_y1_any_df <- 
+  child_fscbc_ecc2_y1_any_df[child_fscbc_ecc2_y1_any_df$sampleid %in%
+                               child_fscbc_ecc2_cb_any_df_nodups$sampleid, ] 
+#check sizes
+dim(child_fscbc_ecc2_y1_any_df)
+dim(child_fscbc_ecc2_cb_any_df_nodups)
+
+#check that samples are in same order
+identical(child_fscbc_ecc2_cb_any_df_nodups$sampleid, 
+          child_fscbc_ecc2_y1_any_df[child_fscbc_ecc2_y1_any_df$sampleid %in%
+                                       child_fscbc_ecc2_cb_any_df_nodups$sampleid,"sampleid"]) #true
+
+#rowbind dataframes together
+cby1 <- rbind(child_fscbc_ecc2_cb_any_df_nodups, 
+              child_fscbc_ecc2_y1_any_df)
+
+#melt dataframe for plotting
+cby1_long <- cby1 %>% melt(id = c("tissue", "sampleid", "method"))
+
+#change class of variables for plotting
+cby1_long$sampleid <- as.factor(cby1_long$sampleid)
+
+#t-tests between birth and age one for cell types
+
+#cd4t
+cd4t <- t.test(child_fscbc_ecc2_cb_any_df_nodups[,"CD4T"], 
+               child_fscbc_ecc2_y1_any_df[child_fscbc_ecc2_y1_any_df$sampleid %in%
+                                            child_fscbc_ecc2_cb_any_df_nodups$sampleid,"CD4T"],
+               alternative = "two.sided", 
+               paired=TRUE)
+
+#cd8t
+cd8t <- t.test(child_fscbc_ecc2_cb_any_df_nodups[,"CD8T"], 
+               child_fscbc_ecc2_y1_any_df[child_fscbc_ecc2_y1_any_df$sampleid %in%
+                                            child_fscbc_ecc2_cb_any_df_nodups$sampleid,"CD8T"],
+               alternative = "two.sided", 
+               paired=TRUE)
+
+#mono
+mono <-  t.test(child_fscbc_ecc2_cb_any_df_nodups[,"Mono"], 
+                child_fscbc_ecc2_y1_any_df[child_fscbc_ecc2_y1_any_df$sampleid %in%
+                                             child_fscbc_ecc2_cb_any_df_nodups$sampleid,"Mono"],
+                alternative = "two.sided", 
+                paired=TRUE)
+
+#NK cells
+nk <-  t.test(child_fscbc_ecc2_cb_any_df_nodups[,"NK"], 
+              child_fscbc_ecc2_y1_any_df[child_fscbc_ecc2_y1_any_df$sampleid %in%
+                                           child_fscbc_ecc2_cb_any_df_nodups$sampleid,"NK"],
+              alternative = "two.sided", 
+              paired=TRUE)
+
+#bcells
+bcell <- t.test(child_fscbc_ecc2_cb_any_df_nodups[,"Bcell"], 
+                child_fscbc_ecc2_y1_any_df[child_fscbc_ecc2_y1_any_df$sampleid %in%
+                                             child_fscbc_ecc2_cb_any_df_nodups$sampleid,"Bcell"],
+                alternative = "two.sided", 
+                paired=TRUE)
+
+#graphing
+ggplot(cby1_long, aes(x=as.factor(tissue),
+                      y=value, 
+                      group=sampleid, 
+                      col=sampleid))  +
+  geom_line(color = "black", alpha=0.5) +
+  geom_point(cby1_long %>% subset(variable=="nRBC"), 
+             mapping=aes(x=as.factor(tissue), 
+                         y=value, 
+                         group=sampleid,
+                         col=sampleid),
+             color = "black", alpha = 0.5) +
+  facet_grid(. ~ variable) +
+  theme(legend.position = "none") +
+  theme_bw() +
+  theme(legend.position ="none") +
+  geom_signif(comparisons = list(c("C", "P"), c("C", "P"), c("C", "P"), c("C", "P"), c("C", "P")),
+              test="t.test", test.args=list(alternative="two.sided", paired=TRUE), 
+              map_signif_level = TRUE,
+              col="black")
+
+```

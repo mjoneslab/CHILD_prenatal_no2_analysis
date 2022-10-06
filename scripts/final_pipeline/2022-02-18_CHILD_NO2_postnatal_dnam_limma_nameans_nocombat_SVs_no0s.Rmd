@@ -1884,8 +1884,9 @@ summary(cg18668679_lm)$coefficients["no2_y1_entire", "Estimate"]*range_no2 # -0.
 
 
 Examine whether DNAm at significant cpgs is associated with reported wheeze at age one. In previous CHILD paper [(PMID: 26424567)](https://www.science.org/doi/10.1126/scitranslmed.aab2271) wheeze was defined using wheeze questionnaires. If the child had wheezed with or without a cold during the first year of life (recorded via questionnaires answered by parents at 3, 6, and 12 months), the child was included in the wheezing group. Children were also included in the wheezing group if the CHILD clinician recorded a wheeze during the 1-year clinical assessment.
-```{r wheezing_atopy_assoc}
 
+Need to multiple DNAm at each locus by 100 to put into percent to get an interpretable estimate and confidence interval.
+```{r wheezing_atopy_assoc}
 
 covariates_geno_ctpcs_tech_cc_not0$any_wheeze_y1 <- 
   ifelse(covariates_geno_ctpcs_tech_cc_not0$reported_wheezing_y1 ==1 | 
@@ -1894,6 +1895,9 @@ covariates_geno_ctpcs_tech_cc_not0$any_wheeze_y1 <-
 ###################
 # cg07472943 SHC2 #
 ###################
+
+covariates_geno_ctpcs_tech_cc_not0$cg07472943_100 <-
+  covariates_geno_ctpcs_tech_cc_not0$cg07472943*100
 
 # reported wheeze
 cg07472943_wheeze <- ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
@@ -1912,7 +1916,7 @@ cg07472943_wheeze <- ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   ggsignif::geom_signif(comparisons = list(c("0", "1")),
                         annotations = "adj.p=0.09", 
                         textsize = 3,vjust = -0.25)
-# col = "#254A90"
+
 
 ggsave(plot = cg07472943_wheeze, 
        filename = here("figures", 
@@ -1923,7 +1927,7 @@ ggsave(plot = cg07472943_wheeze,
 
 
 # wheeze logistic model
-cg07472943_wheeze_log <- glm(any_wheeze_y1 ~ cg07472943 +
+cg07472943_wheeze_log <- glm(any_wheeze_y1 ~ cg07472943_100  +
                                sex + pss_6mos +
                                maternal_smoking_y1 + maternal_education_length +
                                celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -1940,6 +1944,7 @@ cg07472943_wheeze_log_tidy <- tidy(cg07472943_wheeze_log, exponentiate = T, conf
 cg07472943_wheeze_log_tidy # dnam pvalue = 0.00551  
 
 
+
 # atopy SPT
 ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
          select(clinician_atopy_dx_y1, cg07472943) %>%
@@ -1950,7 +1955,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # atopy logistic model
-cg07472943_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg07472943 +
+cg07472943_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg07472943_100 +
                               sex + pss_6mos +
                               maternal_smoking_y1 + maternal_education_length +
                               celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -1970,6 +1975,9 @@ cg07472943_atopy_log_tidy # p = 0.219
 # cg19263548 #
 ##############
 
+covariates_geno_ctpcs_tech_cc_not0$cg19263548_100 <-
+  covariates_geno_ctpcs_tech_cc_not0$cg19263548*100
+
 # reported wheeze
 ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
          select(any_wheeze_y1, cg19263548) %>%
@@ -1980,7 +1988,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # wheeze logistic model 
-cg19263548_wheeze_log <- glm(any_wheeze_y1 ~ cg19263548 +
+cg19263548_wheeze_log <- glm(any_wheeze_y1 ~ cg19263548_100 +
                                sex + pss_6mos +
                                maternal_smoking_y1 + maternal_education_length +
                                celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2005,7 +2013,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # atopy logistic model 
-cg19263548_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg19263548 +
+cg19263548_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg19263548_100 +
                               sex + pss_6mos +
                               maternal_smoking_y1 + maternal_education_length +
                               celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2024,6 +2032,10 @@ cg19263548_atopy_log_tidy
 # cg26989646 FOSL2 #
 ####################
 
+
+covariates_geno_ctpcs_tech_cc_not0$cg26989646_100 <-
+  covariates_geno_ctpcs_tech_cc_not0$cg26989646*100
+
 # reported wheeze
 ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
          select(any_wheeze_y1, cg26989646) %>%
@@ -2034,7 +2046,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # wheeze logistic
-cg26989646_wheeze_log <- glm(any_wheeze_y1 ~ cg26989646 +
+cg26989646_wheeze_log <- glm(any_wheeze_y1 ~ cg26989646_100 +
                                sex + pss_6mos +
                                maternal_smoking_y1 + maternal_education_length +
                                celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2049,6 +2061,13 @@ summary(cg26989646_wheeze_log)
 cg26989646_wheeze_log_tidy <- tidy(cg26989646_wheeze_log, exponentiate = T, conf.int = T) 
 cg26989646_wheeze_log_tidy
 
+# logistic plot
+cg26989646_wheeze_log_plot <- ggplot(test, aes(x=cg07472943, y=any_wheeze_y1)) +
+    geom_point(alpha = 0.55) +
+    stat_smooth(method="glm",  se=T,
+                method.args = list(family=binomial)) +
+    theme_bw()
+
 
 # reported atopy
 ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
@@ -2060,7 +2079,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # atopy logistic
-cg26989646_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg26989646 +
+cg26989646_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg26989646_100 +
                               sex + pss_6mos +
                               maternal_smoking_y1 + maternal_education_length +
                               celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2080,6 +2099,9 @@ cg26989646_atopy_log_tidy # dnam pvalue = 0.0965
 # cg04823720 SLC25A13 #
 #######################
 
+covariates_geno_ctpcs_tech_cc_not0$cg04823720_100 <-
+  covariates_geno_ctpcs_tech_cc_not0$cg04823720*100
+
 # reported wheeze
 ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
          select(any_wheeze_y1, cg04823720) %>%
@@ -2090,7 +2112,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # wheeze logistic
-cg04823720_wheeze_log <- glm(any_wheeze_y1 ~ cg04823720 +
+cg04823720_wheeze_log <- glm(any_wheeze_y1 ~ cg04823720_100 +
                                sex + pss_6mos +
                                maternal_smoking_y1 + maternal_education_length +
                                celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2114,7 +2136,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # atopy logistic
-cg04823720_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg04823720 +
+cg04823720_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg04823720_100 +
                               sex + pss_6mos +
                               maternal_smoking_y1 + maternal_education_length +
                               celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2133,6 +2155,9 @@ cg04823720_atopy_log_tidy
 # cg15212210 C2CD2L #
 #####################
 
+covariates_geno_ctpcs_tech_cc_not0$cg15212210_100 <-
+  covariates_geno_ctpcs_tech_cc_not0$cg15212210*100
+
 # reported wheeze
 ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
          select(any_wheeze_y1, cg15212210) %>%
@@ -2143,7 +2168,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # wheeze logistic
-cg15212210_wheeze_log <- glm(any_wheeze_y1 ~ cg15212210 +
+cg15212210_wheeze_log <- glm(any_wheeze_y1 ~ cg15212210_100 +
                                sex + pss_6mos +
                                maternal_smoking_y1 + maternal_education_length +
                                celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2168,7 +2193,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # atopy logistic
-cg15212210_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg15212210 +
+cg15212210_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg15212210_100 +
                               sex + pss_6mos +
                               maternal_smoking_y1 + maternal_education_length +
                               celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2188,6 +2213,9 @@ cg15212210_atopy_log_tidy # 0.0822
 # cg08906030 #
 ##############
 
+covariates_geno_ctpcs_tech_cc_not0$cg08906030_100 <-
+  covariates_geno_ctpcs_tech_cc_not0$cg08906030*100
+
 # reported wheeze
 ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
          select(any_wheeze_y1, cg08906030) %>%
@@ -2198,7 +2226,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # wheeze logistic 
-cg08906030_wheeze_log <- glm(any_wheeze_y1 ~ cg08906030 +
+cg08906030_wheeze_log <- glm(any_wheeze_y1 ~ cg08906030_100 +
                                sex + pss_6mos +
                                maternal_smoking_y1 + maternal_education_length +
                                celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2223,7 +2251,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # atopy logistic 
-cg08906030_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg08906030 +
+cg08906030_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg08906030_100 +
                               sex + pss_6mos +
                               maternal_smoking_y1 + maternal_education_length +
                               celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2243,6 +2271,9 @@ cg08906030_atopy_log_tidy
 # cg24353392 CRHR1 #
 ####################
 
+covariates_geno_ctpcs_tech_cc_not0$cg24353392_100 <-
+  covariates_geno_ctpcs_tech_cc_not0$cg24353392*100
+
 # reported wheeze
 ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
          select(any_wheeze_y1, cg24353392) %>%
@@ -2253,7 +2284,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # wheeze logistic 
-cg24353392_wheeze_log <- glm(any_wheeze_y1 ~ cg24353392 +
+cg24353392_wheeze_log <- glm(any_wheeze_y1 ~ cg24353392_100 +
                                sex + pss_6mos +
                                maternal_smoking_y1 + maternal_education_length +
                                celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2279,7 +2310,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # atopy logistic 
-cg24353392_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg24353392 +
+cg24353392_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg24353392_100 +
                               sex + pss_6mos +
                               maternal_smoking_y1 + maternal_education_length +
                               celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2299,6 +2330,9 @@ cg24353392_atopy_log_tidy
 # cg06655349 S1PR2 #
 ####################
 
+covariates_geno_ctpcs_tech_cc_not0$cg06655349_100 <-
+  covariates_geno_ctpcs_tech_cc_not0$cg06655349*100
+
 # reported wheeze
 ggplot(covariates_geno_ctpcs_tech_cc_not0 %>% 
          select(any_wheeze_y1, cg06655349) %>%
@@ -2309,7 +2343,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # wheeze logistic 
-cg06655349_wheeze_log <- glm(any_wheeze_y1 ~ cg06655349 +
+cg06655349_wheeze_log <- glm(any_wheeze_y1 ~ cg06655349_100 +
                                sex + pss_6mos +
                                maternal_smoking_y1 + maternal_education_length +
                                celltype.PC1 + celltype.PC2 + celltype.PC3 + 
@@ -2334,7 +2368,7 @@ ggplot(covariates_geno_ctpcs_tech_cc_not0 %>%
   theme_bw()
 
 # atopy logistic 
-cg06655349_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg06655349 +
+cg06655349_atopy_log <- glm(clinician_atopy_dx_y1 ~ cg06655349_100 +
                               sex + pss_6mos +
                               maternal_smoking_y1 + maternal_education_length +
                               celltype.PC1 + celltype.PC2 + celltype.PC3 + 

@@ -1,0 +1,188 @@
+---
+title: "Untitled"
+author: "Samantha Lee"
+date: '2022-09-29'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r save_data}
+#save mvalues, pdata, and annotation
+load(here("output_data", 
+          "preprocessed_data", 
+          "2022-09-27_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
+```
+
+
+
+### combat batch correction 
+
+Conver to mvalues
+```{r b2m}
+mvals <- wateRmelon::Beta2M(betas)
+```
+
+
+Make model matrix for batch correction. This invovles changing pData columns to factors as they are categorical not continuous. Because we are not correcting for covariates the model matrix will simply be the intercept. 
+```{r model_matrix}
+pdata_nodups$Run <- as.factor(pdata_nodups$Run)
+pdata_nodups$Sentrix_ID <- as.factor(pdata_nodups$Sentrix_ID)
+#pull out row from sentrix position then set to factor
+pdata_nodups$row <- substr(pdata_nodups$Sentrix_Position, 1, 3)
+pdata_nodups$row <- as.factor(pdata_nodups$row)
+pdata_nodups$Sex <- as.factor(pdata_nodups$Sex)
+pdata_nodups$Group <- as.factor(pdata_nodups$Group)
+pdata_nodups$Atopy <- as.factor(pdata_nodups$Atopy)
+pdata_nodups$Wheeze <- as.factor(pdata_nodups$Wheeze)
+pdata_nodups$Tissue <- as.factor(pdata_nodups$Tissue)
+
+#run batch correction in the order of (1) run, (2) row, (chip)
+
+#create a model matrix using pdata
+#this generates intercepts only since we are not adding in covariates
+mod = model.matrix(~1, data=pdata_nodups)
+```
+
+Examine heat scree plot before any batch correction.  
+```{r heat_scree_before}
+source(here("scripts", 
+            "2021-09-14_heat_scree_plot.R"))
+
+uncor.dat <- t(scale(t(mvals)))
+PCA_full<-princomp(na.omit(uncor.dat))
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance<-vars/sum(vars)
+
+#Specify which covariates are categorical and/or continuous
+#only have categorical
+meta_categorical<- pdata_nodups[,c("Run", "Sentrix_ID", "row" ,
+                                   "Sex", "Group", "Atopy", "Wheeze", "Tissue")] 
+
+# Specify the number of PCs you want shown 
+# pick enough to view most of the variance
+Num<-10
+
+# Designate what order you want the variables to appear (continuous variables rbinded to categorical variables in function)
+Order<-c(1:10)
+
+#Apply function on PCA results of uncorrected data, pulls in the meta data and beta values from above
+before <- heat_scree_plot(Loadings = Loadings, Num = Num, Importance = Importance,
+                          Order = Order, Categorical = meta_categorical, Continuous = NULL)
+before
+```
+
+
+Batch correction should be done in the following order: (1) run, (2) row, then (3) chip.
+Batch correction for run:  
+```{r batch_run}
+#can't have NAs for this function -> already removed them
+combat_run <- ComBat(dat=mvals, batch=pdata_nodups$Run, mod = mod) 
+
+#PCA
+uncor.dat <- t(scale(t(combat_run)))
+PCA_full<-princomp(na.omit(uncor.dat))
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance<-vars/sum(vars)
+
+# Specify the number of PCs you want shown 
+# pick enough to view most of the variance
+Num<-10
+
+# Designate what order you want the variables to appear (continuous variables rbinded to categorical variables in function)
+Order<-c(1:10)
+
+#Apply function on PCA results of uncorrected data, pulls in the meta data and beta values from above
+meta_categorical<-pdata_nodups[,c("Run", "Sentrix_ID", "row" ,"Sex", "Group", "Atopy", "Wheeze", "Tissue")] 
+
+
+after_run <- heat_scree_plot(Loadings = Loadings, Num = Num, Importance = Importance,
+                          Order = Order, Categorical = meta_categorical, Continuous = NULL)
+after_run
+```
+
+
+Batch correction for row:
+```{r batch_row}
+
+#can't have NAs for this function -> already removed them
+combat_row <- ComBat(dat=combat_run, batch=pdata_nodups$row, mod = mod) 
+
+#PCA
+uncor.dat <- t(scale(t(combat_row)))
+PCA_full<-princomp(na.omit(uncor.dat))
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance<-vars/sum(vars)
+
+# Specify the number of PCs you want shown 
+# pick enough to view most of the variance
+Num<-10
+
+# Designate what order you want the variables to appear (continuous variables rbinded to categorical variables in function)
+Order<-c(1:10)
+
+#Apply function on PCA results of uncorrected data, pulls in the meta data and beta values from above
+meta_categorical<-pdata_nodups[,c("Run", "Sentrix_ID", "row" ,"Sex", "Group", "Atopy", "Wheeze", "Tissue")] 
+
+
+after_run_row <- heat_scree_plot(Loadings = Loadings, Num = Num, Importance = Importance,
+                          Order = Order, Categorical = meta_categorical, Continuous = NULL)
+after_run_row
+
+```
+
+Batch correction for row:
+```{r batch_chip}
+
+#can't have NAs for this function -> already removed them
+combat_chip<- ComBat(dat=combat_row, batch=pdata_nodups$Sentrix_ID, mod = mod) 
+
+#PCA
+uncor.dat <- t(scale(t(combat_chip)))
+PCA_full<-princomp(na.omit(uncor.dat))
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance<-vars/sum(vars)
+
+# Specify the number of PCs you want shown 
+# pick enough to view most of the variance
+Num<-10
+
+# Designate what order you want the variables to appear (continuous variables rbinded to categorical variables in function)
+Order<-c(1:10)
+
+#Apply function on PCA results of uncorrected data, pulls in the meta data and beta values from above
+meta_categorical<-pdata_nodups[,c("Run", "Sentrix_ID", "row" ,"Sex", "Group", "Atopy", "Wheeze", "Tissue")] 
+
+
+after_run_row_chip <- heat_scree_plot(Loadings = Loadings, Num = Num, Importance = Importance,
+                          Order = Order, Categorical = meta_categorical, Continuous = NULL)
+after_run_row_chip
+```
+Conver back to beta values
+```{r beta}
+mvals <- combat_chip
+min(mvals)
+max(mvals)
+
+betas <- wateRmelon::M2Beta(mvals)
+min(betas) # 0.002910763
+max(betas) # 0.9979425
+```
+
+Rename and then save processed and normalized data for analysis.
+```{r save_data}
+betas_combat <- betas
+#save mvalues, pdata, and annotation
+save(betas_combat, pdata_nodups, annotation,
+     file=here("output_data", 
+               "preprocessed_data", 
+               "2022-09-29_CHILD_preprocessed_betas_pdata_annotated_COMBAT.Rdata"))
+
+```
+
