@@ -1,7 +1,7 @@
 ---
 title: "CHILD cord blood cell cell type PC generation"
 author: "SL"
-date: "2021-09-24"
+date: "2022-09-27"
 output: html_document
 ---
 
@@ -35,10 +35,6 @@ Load required libraries.
 ```{r libraries, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(minfi)
-library(robCompositions)
-library(rgr) #for log centred ratio transfromation
-library(factoextra)
-library(GGally)
 library(here)
 ```
 

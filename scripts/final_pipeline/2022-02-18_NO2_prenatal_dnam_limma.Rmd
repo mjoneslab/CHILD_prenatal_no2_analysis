@@ -517,7 +517,10 @@ svobj_all <- svd(dats)
 svs_cb <- as.data.frame(svobj$sv)
 
 # save 
-save(sv_cb, file = here("output_data", "linear_regression", "2022-05-25_prenatal_svs.RData"))
+save(sv_cb, 
+     file = here("output_data", 
+                 "linear_regression", 
+                 "2022-05-25_prenatal_svs.RData"))
 
 ###############
 #scree of SVs #
