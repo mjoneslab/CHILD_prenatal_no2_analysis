@@ -193,16 +193,17 @@ geno_pc1_pc2 <- ggplot(pca_sub, aes(x=PC1, y=PC2,
         legend.title=element_text(size=9),
         legend.key.size = unit(1, 'cm'), #change legend key size
         legend.key.height = unit(0.5, 'cm'), #change legend key height
-        legend.key.width = unit(1, 'cm')) +
+        legend.key.width = unit(1, 'cm'),
+        legend.position = "none") +
   labs(x="Genotyping PC1", y = "Genotyping PC2")
 
 ggsave(plot = geno_pc1_pc2, 
-       filename="2022-11-17_CHILD_genopcs_race_ancestry_PC1_PC2.png",
+       filename="2022-11-19_CHILD_genopcs_race_ancestry_PC1_PC2.png",
        device = "png",
        path =  here("figures", "genotyping"),
        width = 6,
-       height = 4,
-       units = "in")
+       height = 6,
+       units = "cm")
 
 
 # plot and colour according to race specified on questionnaires
@@ -231,16 +232,17 @@ geno_pc1_pc3 <- ggplot(pca_sub, aes(x=PC1, y=PC3,
         legend.title=element_text(size=9),
         legend.key.size = unit(1, 'cm'), #change legend key size
         legend.key.height = unit(0.5, 'cm'), #change legend key height
-        legend.key.width = unit(1, 'cm')) +
+        legend.key.width = unit(1, 'cm'), 
+        legend.position = "right") +
   labs(x="Genotyping PC1", y = "Genotyping PC3")
 
 ggsave(plot = geno_pc1_pc3, 
-       filename="2022-11-17_CHILD_genopcs_race_ancestry_PC1_PC3.png",
+       filename="2022-11-17_CHILD_genopcs_race_ancestry_PC1_PC3_legend.png",
        device = "png",
        path =  here("figures", "genotyping"),
        width = 6,
-       height = 4,
-       units = "in")
+       height = 12,
+       units = "cm")
 ```
 
 Subset betas, pdata, covariates, and cell type PCS for participants with genotyping data (the limiting factor).
@@ -797,17 +799,19 @@ qqplot <-  ggplot(pval_qq, aes(x=e, y=o)) +
            label = paste("Inflation = ", signif(lambda, 2)), 
            size=3, hjust=0) +
   theme_bw() +
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(size=9),
+  theme(axis.text.x = element_text(size=9),
         axis.text.y = element_text(size=9),
-        axis.title = element_blank())
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color ="black")) 
 qqplot
 
 ggsave(plot = qqplot, 
        filename= here("figures", 
                       "linear_regression", 
                       "prenatal", 
-                      "2022-10-18_prenatal_no2_qqplot.png"),
+                      "2022-11-18_prenatal_no2_qqplot.png"),
        width = 7.5, height = 6, units = "cm")
 ```
 
@@ -1949,19 +1953,25 @@ longdf_dmr13 <- pivot_longer(covariates_geno_ctpc_tech_cc_dmr_cpgs %>%
                                        no2_prenatal_avg_2019v), 
                              names_to = "cpg", 
                              values_to = "dnam") %>%
-  mutate(cpg = factor(cpg, levels = c("cg09594291", "cg02749105", "cg24052338"))) 
+  mutate(cpg = factor(cpg, levels = c("cg09594291", "cg02749105", "cg24052338"))) %>%
+  mutate(no2_colour = ifelse(no2_prenatal_avg_2019v < 7.32, "first",
+                             ifelse(no2_prenatal_avg_2019v >=7.32 & no2_prenatal_avg_2019v < 12.01 , "second", ifelse(no2_prenatal_avg_2019v >= 12.01  & no2_prenatal_avg_2019v < 16.25, "third", "fourth")))) %>%
+  mutate(no2_colour = factor(no2_colour, levels = c("first", "second",  "third", "fourth")))
 
 dmr13_atopy_vis <- 
   ggplot(longdf_dmr13, aes(x=cpg, y=dnam, 
                            group = interaction(cpg, clinician_atopy_dx_y1), 
                            shape = as.factor(clinician_atopy_dx_y1),
-                           color = no2_prenatal_avg_2019v,
+                           color = no2_colour,
                            fill = as.factor(clinician_atopy_dx_y1))) +
-  scale_shape_manual(values = c(20, 17)) +
-  scale_fill_manual(values = c("white", "grey")) +
-  geom_violin(draw_quantiles = c(0.5), trim = T, alpha =0.6) +
-  ggbeeswarm::geom_beeswarm(dodge.width=0.9, cex = 1.5, size = 1) +
-  theme_bw() +
+      scale_shape_manual(values = c(20, 17), labels = c("No", "Yes")) +
+    scale_color_manual( values = c("#87a8e8", "#4484fc", "#254A90", "#10203d")) +
+    scale_fill_manual(values = c("white", "grey"), 
+                      name = "Age one atopy",
+                      labels = c("No", "Yes")) +
+    geom_violin(draw_quantiles = c(0.5), trim = T, alpha =0.6) +
+    ggbeeswarm::geom_beeswarm(dodge.width=0.9, cex = 1.6, size = 0.5, groupOnX = T, ) +
+    theme_bw() +
   scale_x_discrete(labels = c("cg09594291",
                               "cg02749105",
                               "cg24052338"),
@@ -1975,7 +1985,7 @@ ggsave(plot = dmr13_atopy_vis,
        filename  = here("figures",
                         "linear_regression",
                         "prenatal",
-                        "2022-11-11_no2_cb_dmr13_atopy.png"), 
+                        "2022-11-22_no2_cb_dmr13_atopy.png"), 
        width = 7.5, height = 5, units = "cm")
 
 
@@ -2346,22 +2356,26 @@ longdf_dmr23 <- pivot_longer(covariates_geno_ctpc_tech_cc_dmr_cpgs %>%
                              names_to = "cpg", 
                              values_to = "dnam") %>%
   mutate(cpg = factor(cpg, levels = c("cg17887478", "cg11874331", "cg05086567"))) %>%
-  na.omit()
+  na.omit() %>%
+  mutate(no2_colour = ifelse(no2_prenatal_avg_2019v < 7.32, "first",
+                             ifelse(no2_prenatal_avg_2019v >=7.32 & no2_prenatal_avg_2019v < 12.01 , "second", ifelse(no2_prenatal_avg_2019v >= 12.01  & no2_prenatal_avg_2019v < 16.25, "third", "fourth")))) %>%
+  mutate(no2_colour = factor(no2_colour, levels = c("first", "second",  "third", "fourth")))
 
 # violin plots
 dmr23_wheeze_vis <-  ggplot(longdf_dmr23, 
                             aes(x=cpg, y=dnam, 
                                 group = interaction(cpg, any_wheeze_y1), 
                                 shape = as.factor(any_wheeze_y1),
-                                color = no2_prenatal_avg_2019v,
+                                color = no2_colour,
                                 fill = as.factor(any_wheeze_y1))) +
-  scale_shape_manual(values = c(20, 17)) +
-  scale_fill_manual(values = c("white", "grey"), 
-                    name = "Any wheeze age one",
-                    labels = c("No", "Yes")) +
-  geom_violin(draw_quantiles = c(0.5), trim = T, alpha =0.6) +
-  ggbeeswarm::geom_beeswarm(dodge.width=0.9, cex = 1.5, size = 1) +
-  theme_bw() +
+    scale_shape_manual(values = c(20, 17), labels = c("No", "Yes")) +
+    scale_color_manual( values = c("#87a8e8", "#4484fc", "#254A90", "#10203d")) +
+    scale_fill_manual(values = c("white", "grey"), 
+                      name = "Any wheeze age one",
+                      labels = c("No", "Yes")) +
+    geom_violin(draw_quantiles = c(0.5), trim = T, alpha =0.6) +
+    ggbeeswarm::geom_beeswarm(dodge.width=0.9, cex = 1.6, size = 0.5, groupOnX = T, ) +
+    theme_bw() +
   scale_x_discrete(labels = c("cg17887478",
                               "cg11874331",
                               "cg05086567"),
@@ -2375,7 +2389,7 @@ ggsave(plot = dmr23_wheeze_vis,
        filename  = here("figures",
                         "linear_regression",
                         "prenatal",
-                        "2022-11-11_no2_cb_dmr23_wheeze.png"), 
+                        "2022-11-22_no2_cb_dmr23_wheeze.png"), 
        width = 7.5, height = 5, units = "cm")
 
 
@@ -2519,36 +2533,42 @@ longdf_dmr27 <- pivot_longer(covariates_geno_ctpc_tech_cc_dmr_cpgs %>%
                              names_to = "cpg", 
                              values_to = "dnam") %>%
   mutate(cpg = factor(cpg, levels = c("cg10200291", "cg18710053"))) %>%
-  na.omit()
+  na.omit() %>%
+  mutate(no2_colour = ifelse(no2_prenatal_avg_2019v < 7.32, "first",
+                             ifelse(no2_prenatal_avg_2019v >=7.32 & no2_prenatal_avg_2019v < 12.01 , "second", ifelse(no2_prenatal_avg_2019v >= 12.01  & no2_prenatal_avg_2019v < 16.25, "third", "fourth")))) %>%
+  mutate(no2_colour = factor(no2_colour, levels = c("first", "second",  "third", "fourth")))
 
 # violin plots
-dmr27_wheeze_vis <-  ggplot(longdf_dmr27, 
-                            aes(x=cpg, y=dnam, 
-                                group = interaction(cpg, any_wheeze_y1), 
-                                shape = as.factor(any_wheeze_y1),
-                                color = no2_prenatal_avg_2019v,
-                                fill = as.factor(any_wheeze_y1))) +
-  scale_shape_manual(values = c(20, 17)) +
-  scale_fill_manual(values = c("white", "grey"), 
-                    name = "Any wheeze age one",
-                    labels = c("No", "Yes")) +
-  geom_violin(draw_quantiles = c(0.5), trim = T, alpha =0.6) +
-  ggbeeswarm::geom_beeswarm(dodge.width=0.9, cex = 1.5, size = 1) +
-  theme_bw() +
-  scale_x_discrete(labels = c("cg10200291", 
-                              "cg18710053"),
-                   name = element_blank()) +
-  scale_y_continuous(name = "DNA methylation (%)") +
-  theme(legend.position = "none",
+dmr27_wheeze_quantile <- ggplot(longdf_dmr27, 
+       aes(x=cpg, y=dnam, 
+           group = interaction(cpg, as.factor(any_wheeze_y1)), 
+           shape = as.factor(any_wheeze_y1),
+           color = as.factor(no2_colour),
+           fill = as.factor(any_wheeze_y1))) +
+    scale_shape_manual(values = c(20, 17), labels = c("No", "Yes"), name = "Any wheeze age one") +
+    scale_color_manual( values = c("#87a8e8", "#4484fc", "#254A90", "#10203d")) +
+    scale_fill_manual(values = c("white", "grey"), 
+                      name = "Any wheeze age one",
+                      labels = c("No", "Yes")) +
+    geom_violin(draw_quantiles = c(0.5), trim = T, alpha =0.6) +
+    ggbeeswarm::geom_beeswarm(dodge.width=0.9, cex = 1.6, size = 0.5, groupOnX = T) +
+    theme_bw() +
+    scale_x_discrete(labels = c("cg10200291", 
+                                "cg18710053"),
+                     name = element_blank()) +
+    scale_y_continuous(name = "DNA methylation (%)") +
+    theme(#legend.position = "none",
+        legend.direction="horizontal",
         axis.text = element_text(size =9),
+        legend.text = element_text(size = 9),
         panel.grid.major.x = element_blank())
 
-ggsave(plot = dmr27_wheeze_vis,
+ggsave(plot = dmr27_wheeze_quantile,
        filename  = here("figures",
                         "linear_regression",
                         "prenatal",
-                        "2022-11-11_no2_cb_dmr27_wheeze.png"), 
-       width = 7.5, height = 5, units = "cm")
+                        "2022-11-22_no2_cb_dmr27_wheeze_quantile_legend.png"), 
+       width = 12, height = 5, units = "cm")
 
 # atopy
 dmr27_mancova_atopy <- manova(cbind(cg10200291, cg18710053) ~ 
@@ -2560,37 +2580,7 @@ dmr27_mancova_atopy <- manova(cbind(cg10200291, cg18710053) ~
                                 sv11 + sv12 + sv13 + sv14 + sv15 + sv16 + sv17, 
                               data = covariates_geno_ctpc_tech_cc_dmr_cpgs)
 
-summary(dmr27_mancova_atopy, test="Pillai") # atopy p = 0.4054433  
-
-dmr27_wheeze_plot <- ggplot(covariates_geno_ctpc_tech_cc %>% 
-                              subset(!is.na(any_wheeze_y1)),
-                            aes(x = as.factor(any_wheeze_y1), 
-                                y = dmrmean27,
-                                color = no2_prenatal_avg_2019v)) +
-  geom_violin(draw_quantiles = c(0.5)) +
-  ggbeeswarm::geom_beeswarm(cex = 3, alpha = 0.9, size = 1) +
-  scale_y_continuous(name = "Average DNAm (%)", limits = c(0,0.4)) +
-  scale_x_discrete(name = "Age one wheeze", labels = c("No", "Yes")) +
-  theme_bw() +
-  theme(panel.grid.major.x = element_blank(),
-        axis.text.x = element_text(size=9),
-        axis.text.y = element_text(size=9),
-        legend.key.height = unit(0.3, "cm"), 
-        legend.key.width = unit(0.3, "cm"), 
-        axis.title = element_blank()) +
-  scale_color_continuous(name = "") +
-  ggsignif::geom_signif(annotations = "adj p = 0.12", 
-                        xmin = 1, 
-                        xmax = 2, 
-                        y_position = 0.325, 
-                        vjust = -0.25, textsize = 3.5)
-
-ggsave(plot = dmr27_wheeze_plot,
-       filename = here("figures", 
-                       "linear_regression", 
-                       "prenatal", 
-                       "2022-10-12_dmrmean27_wheeze_violin.png"),
-       width = 6, height = 5, units = "cm")
+summary(dmr27_mancova_atopy, test="Pillai") # atopy p = 0.4054433 
 ```
 
 
@@ -2648,7 +2638,7 @@ ggsave(plot = global_dnam_plot,
        filename = here("figures", 
                        "linear_regression", 
                        "prenatal",
-                       "2022-10-05_cb_global_dnam.png"),
+                       "2022-11-18_cb_global_dnam.png"),
        width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
@@ -2733,7 +2723,7 @@ ggsave(plot = line_dnam_plot,
        filename = here("figures", 
                        "linear_regression", 
                        "prenatal",
-                       "2022-10-05_cb_line_dnam.png"),
+                       "2022-11-18_cb_line_dnam.png"),
        width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
@@ -3443,17 +3433,88 @@ mqtls <- read.csv(here("input_data",
                        "mQTLdb_lists", 
                        "CHILD_cordblood_dmr_cpgs_mqtldb.csv"))
 
+# subset mqtls for pval and effect size according to guant (2016; PMID: 27036880)
+mqtls_sub <- mqtls %>%  
+  subset(p.value< 1.0e-14 & Effect.Size > 0.02)
+
 # annotate individual cpgs within DMRs as a potential mqtl or not
 combp_anno_df_es_sub_escutoff_mqtls <- combp_anno_df_es_sub_escutoff %>%
-  mutate(mqtl = ifelse(Name %in% (mqtls %>% 
+  mutate(mqtl = ifelse(Name %in% (mqtls_sub %>% 
                                     distinct(CpG) %>% 
                                     pull(CpG)), TRUE, FALSE))
 
+# get names of cpgs that are potential mqtls 
+child_mqtls <- combp_anno_df_es_sub_escutoff_mqtls %>% subset(mqtl) %>% pull(Name) 
+
+# get effect size min and  max
+mqtls_sub %>% subset(CpG %in% child_mqtls) %>% pull(Effect.Size) %>% min()
+mqtls_sub %>% subset(CpG %in% child_mqtls) %>% pull(Effect.Size) %>% max()
+
+child_mqtls <- combp_anno_df_es_sub_escutoff_mqtls %>% subset(mqtl) %>% pull(Name) 
+
 # write out annotation for dmrs
 write.csv(combp_anno_df_es_sub_escutoff_mqtls,
-          here("output_data",
-               "linear_regression",
-               "2022-10-13_prenatal_no2_combp_annotation_sigDMRs_mQTL_annotation.csv"))
+          here("tables",
+               "prenatal",
+               "2022-11-23_prenatal_no2_cord_blood_mqtldb_birth_cpgs_sub.csv"))
+
+
+# write out annotation for dmrs
+write.csv(mqtls_sub,
+          here("tables",
+               "prenatal",
+               "2022-11-22_prenatal_no2_combp_annotation_sigDMRs_mQTL_annotation.csv"))
+
+
+dmr_cpg_mqtls <- combp_anno_df_es_sub_escutoff_mqtls %>%
+  group_by(dmr) %>%
+  summarise(percent_mqtl = sum(mqtl)/length(mqtl)*100) %>%
+  mutate(dmr = as.factor(dmr)) %>%
+  mutate(dmr = recode(dmr, 
+                      `1` = "Chr7:27183133-27184854",
+                      `2` = "Chr7:27187102-27187692",
+                      `3` = "Chr8:22132665-22133077",
+                      `4` = "Chr17:36666953-36667485",
+                      `5` = "Chr5:150325954-150326498",
+                      `6` = "Chr2:237702390-237702581",
+                      `7` = "Chr7:26897182-26897254",
+                      `8` = "Chr1:248100345-248100615",
+                      `9` = "Chr17:46682308-46682414",
+                      `10` = "Chr7:27170552-27171052",
+                      `11` = "Chr10:134914613-134914911",
+                      `12` = "Chr2:54087008-54087210",
+                      `13` = "Chr19:58879022-58879060",
+                      `14` = "Chr11:75139390-75139681",
+                      `15` = "Chr1:217306590-217306764",
+                      `16` = "Chr4:3374767-3374910",
+                      `18` = "Chr12:113787113-113787274",
+                      `19` = "Chr6:103780364-103780469",
+                      `20` = "Chr15:93652766-93653074",
+                      `21` = "Chr6:164393351-164393644",
+                      `23` = "Chr17:7486551-7486616",
+                      `24` = "Chr7:27225855-27225866",
+                      `25` = "Chr5:180646754-180646881",
+                      `27` = "Chr5:126409007-126409062")) %>%
+  ggplot(aes(x = dmr, y=percent_mqtl)) +
+  geom_col(fill = "#254A90") +
+  scale_y_continuous(name = "% CpGs as mQTLs") + 
+  scale_x_discrete(name = "Cord blood DMRs") +
+  theme_bw() +
+  theme(panel.grid.major.x = element_blank(),
+        axis.text.x = element_text(angle =  -45,  hjust= -0.0, size = 7),
+        plot.margin = margin(t = 1,  # Top margin
+                             r = 2,  # Right margin
+                             b = 1,  # Bottom margin
+                             l = 1,  # Left margin
+                             unit = "cm"),
+        axis.text.y = element_text(size=9))
+
+ggsave(plot = dmr_cpg_mqtls,
+       filename = here("figures",
+                       "linear_regression",
+                       "prenatal",
+                       "2022-11-22_cord_blood_dmr_cpg_mqtl_percent.png"),
+       height = 7, width = 15, units = "cm")
 ```
 
 
@@ -4084,8 +4145,8 @@ ggsave(plot = svcorr_comb,
 
 ### Linear mixed models regressions examining persistence at significant CpGs/DMRs
 
-Examine persistence of prenatal changes at age one.
-```{r persistence}
+Examine persistence of of DMR prenatal changes at age one.
+```{r dmr_persistence}
 
 # check order of data and dnam
 identical(as.numeric(str_sub(colnames(comb_betas), 4, 8)), 
@@ -4093,7 +4154,7 @@ identical(as.numeric(str_sub(colnames(comb_betas), 4, 8)),
 
 cg_df_order_svs_cpgs <- 
   cbind(cg_df_order_svs, 
-        t(comb_betas[combp_anno_df_es_sub_escutoff %>% pull(Name), ]))
+        t(comb_betas[combp_anno_df_es_sub_escutoff_mqtls %>% pull(Name), ]))
 
 lmer_results <- NULL
 lmer_pvals <- NULL
@@ -4118,7 +4179,7 @@ for(i in 118:268){
   
 }
 
-names(lmer_results) <- combp_anno_df_es_sub_escutoff %>% pull(Name)
+names(lmer_results) <- combp_anno_df_es_sub_escutoff_mqtls %>% pull(Name)
 
 lmer_pvals <- lmer_pvals %>% 
   t() %>% 
@@ -4134,40 +4195,77 @@ lmer_pvals_dmrs <- lmer_pvals %>%
   cbind(., lmer_coeffs) %>%
   as.data.frame() %>%
   #rename("pval" = 1) %>%
-  mutate(dmr = combp_anno_df_es_sub_escutoff$dmr,
-         cpg = combp_anno_df_es_sub_escutoff$Name,
+  mutate(dmr = combp_anno_df_es_sub_escutoff_mqtls$dmr,
+         cpg = combp_anno_df_es_sub_escutoff_mqtls$Name,
          singular = lapply(lmer_results, isSingular) %>% do.call(rbind,.),
          pval_no2_adj = p.adjust(pval_no2, method = "bonferroni"),
          pval_timepointageone_adj = p.adjust(pval_timepointageone, method = "bonferroni"),
          `pval_timepointageone:no2_adj` = p.adjust(`pval_timepointageone:no2`, method = "bonferroni"),
          coef_no2_age_one = coef_no2 + `coef_timepointageone:no2`) %>%
-  mutate( change = ifelse(abs(coef_no2_age_one) > abs(coef_no2), "larger", "smaller")) 
+  mutate( change = ifelse(abs(coef_no2_age_one) > abs(coef_no2), "larger", "smaller"),
+          birth_effect_size = coef_no2 * range,
+          y1_effect_size = coef_no2_age_one * range) 
+
+# combine persistence info with info from ewas
+colnames(lmer_pvals_dmrs) <- paste("lme", colnames(lmer_pvals_dmrs), sep="_")
+colnames(combp_anno_df_es_sub_escutoff_mqtls)[c(37,38)] <- 
+  paste("lm", colnames(combp_anno_df_es_sub_escutoff_mqtls)[c(37,38)], sep="_")
+dmrs_lm_lme <- merge(x=combp_anno_df_es_sub_escutoff_mqtls, y=lmer_pvals_dmrs, by.x = 5, by.y = 10)
+dmrs_lm_lme_sub <- dmrs_lm_lme %>% select(-c(lme_dmr, Row.names, analysis))
+
+
+write.csv(dmrs_lm_lme_sub, file = here ("tables",
+                                        "prenatal",
+                                        "2022-11-23_prenatal_no2_dmr_cpg_persistence.csv"))
+
+# examine effect sizes from lme models vs those from ewas
+lmer_effect_sizes <- lmer_pvals_dmrs %>%
+    group_by(dmr) %>%
+    summarise(mean_birth_es = mean(birth_effect_size),
+              mean_y1_es = mean(y1_effect_size)) %>%
+    cbind(., combp_anno_df_es_sub_escutoff %>% 
+              group_by(dmr) %>%
+              summarise(ewas_birth_es = mean(effect_size)))
+
+
+
+write.csv(lmer_effect_sizes, file = here ("tables",
+                                        "prenatal",
+                                        "2022-11-22_prenatal_no2_dmr_cpg_persistence_effect_size_by_dmr.csv"))
 
 # visualize
 dmr_persistence <- lmer_pvals_dmrs %>% 
   mutate(sig = ifelse(`pval_timepointageone:no2_adj` < 0.05, T, F),
          start = ifelse(coef_no2 < 0, "lower", "higher")) %>%
   mutate(start = factor(start, levels =c("lower", "higher"))) %>%
-  select(coef_no2, coef_no2_age_one, cpg, sig, start, change) %>%
+  select(birth_effect_size, y1_effect_size, cpg, sig, start, change) %>%
   pivot_longer(cols = -c(cpg, sig, start, change)) %>%
   ggplot(aes(x=name, y = value, group=cpg, shape = change)) +
   geom_point(alpha = 0.7, color = "#254A90") + 
   geom_line(alpha = 0.7, color = "#254A90") + 
   facet_wrap(~start) + 
-  scale_shape_manual(values = c(17,16), labels = c("Higher", "Lower"), name = "Change in coefficient\nmagnitude") + 
+  scale_shape_manual(values = c(17,16), 
+                     labels = c("Larger", "Smaller"), 
+                     name = "Δ Coefficient\nmagnitude") + 
   scale_x_discrete(labels = c("Birth", "Age one"), name = element_blank()) +
-  scale_y_continuous(name = "Prenatal NO2 coefficient (B)") +
+  scale_y_continuous(name = "Prenatal NO2 effect size (% DNAm)") +
   theme_bw() +
   theme(panel.grid.major.x = element_blank(),
         axis.text.x = element_text(size=9),
-        axis.text.y = element_text(size=9))
+        axis.text.y = element_text(size=9),
+        strip.background = element_blank(),
+        legend.text = element_text(size=9),
+        legend.title = element_blank(),
+        legend.position = "none") 
+#legend.margin = margin(t = 0, r = 0, l = 0, b=0, unit='cm'),
+#legend.box.margin = margin(t = 0, r = 0, l = 0, b=0, unit='cm'))
 
 ggsave(plot = dmr_persistence,
        filename = here("figures",
-                   "linear_regression",
-                   "prenatal",
-                   "2022-11-17_dmr_persistence_legend.png"),
-       height = 7, width = 8, units="cm")
+                       "linear_regression",
+                       "prenatal",
+                       "2022-11-20_dmr_persistence.png"),
+       height = 6, width = 6.5, units="cm")
 # 
 # # test with cg10906729
 # covariates_geno_ctpc_tech_cc_y1_sub$y1_cg12764003 <- y1_betas_cc_sub["cg12764003",] 
@@ -4185,7 +4283,6 @@ ggsave(plot = dmr_persistence,
 # 
 # # summary of lm
 # summary(y1_cg12764003_lm) # pvalue = 0.063860
-# # (Intercept)                0.7879325  0.0279074  28.234  < 2e-16 ***
 # # no2_prenatal_avg_2019v    -0.0030214  0.0007943  -3.804 0.000253 ***
 # 
 # # pval_(Intercept) pval_no2_prenatal_avg_2019v
@@ -4442,40 +4539,61 @@ lmer_pvals_cpgs_results <- lmer_pvals_cpgs %>%
            slice_head(n=100) %>% 
            pull(Name),
          singular = as.vector(lapply(lmer_results_cpgs, isSingular) %>% do.call(rbind,.))) %>%
-  subset(singular != TRUE) %>%
+  #subset(singular != TRUE) %>%
   mutate(pval_no2_adj = p.adjust(pval_no2, "bonferroni"),
          pval_timepointageone_adj = p.adjust(pval_timepointageone, "bonferroni"),
          `pval_timepointageone:no2_adj` = p.adjust(`pval_timepointageone:no2`, "bonferroni"),
          coef_no2_age_one = coef_no2 + `coef_timepointageone:no2`) %>%
-  mutate( change = ifelse(abs(coef_no2_age_one) > abs(coef_no2), "larger", "smaller"))
+  mutate( change = ifelse(abs(coef_no2_age_one) > abs(coef_no2), "larger", "smaller"),
+          y1_effect_size = coef_no2_age_one*range,
+          birth_effect_size = coef_no2*range) 
+
+
+write.csv(lmer_pvals_cpgs_results, file = here ("tables",
+                                        "prenatal",
+                                        "2022-11-20_prenatal_no2_top100_persistence.csv"))
+
+# combine persistence info with info from ewas
+colnames(lmer_pvals_cpgs_results) <- paste("lme", colnames(lmer_pvals_cpgs_results), sep="_")
+
+top100_lm_lme <- merge(x=cb_pvals_tech[,c(61:93,95)], y=lmer_pvals_cpgs_results, by.x = 1, by.y = 9)
+colnames(top100_lm_lme)[34] <- paste("lm", colnames(top100_lm_lme)[34], sep="_")
+
+write.csv(top100_lm_lme, file = here ("tables",
+                                        "prenatal",
+                                        "2022-11-23_prenatal_no2_top100_persistence_lm_lme.csv"))
 
 # visualize
 top100_persistence <- lmer_pvals_cpgs_results %>% 
   mutate(sig = ifelse(`pval_timepointageone:no2_adj` < 0.05, T, F),
-         start = ifelse(coef_no2 < 0, "lower", "higher")) %>%
-  mutate(start = factor(start, levels =c("lower", "higher"))) %>%
-  select(coef_no2, coef_no2_age_one, cpg, sig, start, change) %>%
+         start = ifelse(coef_no2 < 0, "Smaller", "Larger")) %>%
+  mutate(start = factor(start, levels =c("Smaller", "Larger"))) %>%
+  select(birth_effect_size, y1_effect_size, cpg, sig, start, change) %>%
   pivot_longer(cols = -c(cpg, sig, start, change)) %>%
   ggplot(aes(x=name, y = value, group=cpg, color = sig, shape = change)) +
   geom_point(alpha = 0.7) + 
   geom_line(alpha = 0.7) + 
   facet_wrap(~start) + 
   theme_bw() +
-  scale_shape_manual(values = c(17,16), labels = c("Higher", "Lower")) + 
+  scale_shape_manual(values = c(17,16), labels = c("Larger", "Smaller")) + 
   scale_x_discrete(labels = c("Birth", "Age one"), name = element_blank()) +
-  scale_y_continuous(name = "Prenatal NO2 coefficient (B)") +
+  scale_y_continuous(name = "Prenatal NO2 effect size (% DNAm)") +
   scale_color_manual(values = c("#254A90", "red2"), name = "Adjusted p", labels = c(">=0.05", "<0.05")) +
   theme(panel.grid.major.x = element_blank(),
         axis.text.x = element_text(size=9),
         axis.text.y = element_text(size=9),
-        legend.position = "right")
+        strip.background = element_blank(),
+        legend.text = element_text(size=9),
+        legend.title = element_blank(),
+        legend.position = "none")
+
 
 ggsave(plot = top100_persistence,
        filename = here("figures",
-                   "linear_regression",
-                   "prenatal",
-                   "2022-11-17_top100_persistence_length.png"),
-       height = 7, width = 8, units="cm")
+                       "linear_regression",
+                       "prenatal",
+                       "2022-11-20_top100_persistence.png"),
+       height = 6, width = 6.5, units="cm")
 ```
 
 
@@ -4559,3 +4677,65 @@ ggplot(covariates_geno_ctpc_tech, aes(y=PM25DALbYY_01, x=studycentre, fill=study
         axis.text = element_text(size=14),
         axis.title = element_text(size=16))
 ```
+
+
+Prenatal air pollution exposure vs asthma in cord blood 
+```{r no2_vs_asthma_cordblood}
+wheeze_no2 <- covariates_geno_ctpc_tech_cc %>%
+  subset(!is.na(any_wheeze_y1)) %>%
+  select(any_wheeze_y1, prenatal_maternal_smoke,
+         no2_prenatal_avg_2019v, no2_y1_2019v,
+         sex, 
+         gestational_age, 
+         maternal_race,
+         maternal_education_length,
+         genotyping.PC1, genotyping.PC2, genotyping.PC3,
+         Comp.1, Comp.2, Comp.3, Comp.4)
+
+test <- glm(any_wheeze_y1 ~ no2_prenatal_avg_2019v + sex + 
+              gestational_age + prenatal_maternal_smoke + maternal_education_length +
+              genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
+              Comp.1 + Comp.2 + Comp.3 + Comp.4, 
+            data = wheeze_no2, family = "binomial")
+
+t.test(wheeze_no2$any_wheeze_y1, wheeze_no2$no2_prenatal_avg_2019v)
+
+ggplot(wheeze_no2, aes(x=as.factor(any_wheeze_y1), y = no2_prenatal_avg_2019v)) +
+    geom_boxplot() +
+    facet_grid(~sex)
+
+plot_summs(test, exp = 1)
+
+
+atopy_no2 <- covariates_geno_ctpc_tech_cc %>%
+  subset(!is.na(clinician_atopy_dx_y1)) %>%
+  select(clinician_atopy_dx_y1, prenatal_maternal_smoke,
+         no2_prenatal_avg_2019v, no2_y1_2019v,
+         sex, 
+         gestational_age, maternal_race,
+         maternal_education_length, 
+         genotyping.PC1, genotyping.PC2, genotyping.PC3,
+         Comp.1, Comp.2, Comp.3, Comp.4)
+
+test <- glm(clinician_atopy_dx_y1 ~ no2_prenatal_avg_2019v + sex + 
+              gestational_age + prenatal_maternal_smoke + maternal_education_length +
+               genotyping.PC1 + genotyping.PC2 + genotyping.PC3,
+            data = atopy_no2, family = "binomial")
+
+
+plot_summs(test, exp = 1)
+
+t.test(as.numeric(as.character(atopy_no2$clinician_atopy_dx_y1)), 
+       atopy_no2$no2_prenatal_avg_2019v)
+
+ggplot(atopy_no2, aes(x=as.factor(clinician_atopy_dx_y1), y = no2_prenatal_avg_2019v)) +
+    geom_boxplot() +
+    facet_grid(~sex)
+
+test <- merge(x=covariates_geno_ctpc_tech_cc, y=child_fscbc_ecc2_cb$prop, by.x = "cb_sample_name", by.y = "row.names", all.x=T)
+testlong <- test %>% 
+    select(sample_id, CD4T, NK, CD8T, Mono, Bcell, nRBC, any_wheeze_y1) %>%
+    pivot_longer(cols=-c(sample_id, any_wheeze_y1))
+```
+
+

@@ -25,8 +25,10 @@ library(broom) # tidy function for summarizing lm
 library(sva) # for calculating SVs
 library(ggcorrplot) # correlation matrix
 library(ggsignif) # for significance comparison bars
-library(broom)
 library(table1)
+library(GenomicRanges)
+library(IRanges)
+library(ENmix)
 ```
 
 ### Data import and cleaning
@@ -777,6 +779,11 @@ colnames(diff_pvals_tech) <- c(paste("pval", colnames(diff_pvals_tech)[1:29],
 
 diff_pvals_tech$pval_no2_y1_2019v_adj <- 
   p.adjust(diff_pvals_tech$pval_no2_y1_2019v, method="BH")
+
+# write.csv(diff_pvals_tech,
+#           file=here("tables",
+#                     "yearone",
+#                     "2022-11-17_yearone_no2_epigenome_wide_analysis_postnatal_specific_dnam.csv"))
 ```
 
 
@@ -835,17 +842,46 @@ diff_pvals_tech$effect_size <- diff_pvals_tech$coeff_no2_y1_2019v * range
 
 Volcano plot
 ```{r volcano_db_tech}
+# points used in investigation of cord blood DNAm persistence 
+persist_points <- c("cg03508112", "cg08568767", "cg12228123", "cg14491284", "cg02074714",
+                    "cg14658149", "cg25472862", "cg11642106", "cg09936824", "cg08033031",
+                    "cg22230559", "cg05026403", "cg20747577", "cg23745864", "cg00125048",
+                    "cg07658809", "cg03529432", "cg05686950", "cg14795268", "cg06143362",
+                    "cg06617093", "cg26881997", "cg18229717", "cg10021364", "cg17646392",
+                    "cg17186073", "cg00155314", "cg04340874", "cg26330365", "cg26457160",
+                    "cg24126361", "cg07576222", "cg22136098", "cg12764003", "cg26089165",
+                    "cg12184221", "cg16317923", "cg06518781", "cg21737226", "cg16321846",
+                    "cg08650639", "cg26859557", "cg17516539", "cg15696634", "cg20779966",
+                    "cg17051207", "cg08303283", "cg04452203", "cg06178322", "cg09155362",
+                    "cg01755551", "cg24336985", "cg03346521", "cg07053697", "cg13690280",
+                    "cg02614016", "cg02659402", "cg04548926", "cg16118259", "cg08958294",
+                    "cg15635480", "cg16660547", "cg08901632", "cg08460812", "cg24262654",
+                    "cg12214032", "cg13864749", "cg06167719", "cg06295784", "cg19295068",
+                    "cg19804488", "cg22336337", "cg25437304", "cg04058100", "cg26679367",
+                    "cg21426218", "cg03303774", "cg03443762", "cg19913563", "cg03416601",
+                    "cg17836141", "cg26745143", "cg18331909", "cg01008894", "cg26061593",
+                    "cg07176692", "cg27151303", "cg26160086", "cg01468193", "cg11061177",
+                    "cg21523908", "cg19124424", "cg18064256", "cg04508648", "cg06346505",
+                    "cg26646558", "cg27627493", "cg18063278", "cg02446225", "cg17105886"
+)
+
 #make new column to label sig points with cpgid
 diff_pvals_tech$cpgid <- rownames(diff_pvals_tech)
 
 #volcano plot
-volcano_plot <- ggplot(diff_pvals_tech, 
-                       aes(x=as.numeric(effect_size), 
+volcano_plot <- ggplot(diff_pvals_tech %>%
+                         subset(!rownames(.) %in% persist_points), 
+                       aes(x=as.numeric(effect_size) , 
                            y=-log10(as.numeric(pval_no2_y1_2019v)))) +
-  geom_point(alpha=0.9, col = "#254A90", size=1) +
+  geom_point(alpha=0.75, col = "#254A90", size=1) +
+  # colour significant cpgs; 2.5% effect size cut off and FDR < 0.25
+  geom_point(data = diff_pvals_tech %>% 
+               subset(rownames(.) %in% persist_points), 
+             alpha=0.75, col = "#254A90", size=1, shape = 25, fill = "#254A90") +  #"#254A90", "#508FC2", "#92C5EB"
   scale_x_continuous(limits = c(-0.20, 0.20), 
                      breaks = seq(-0.20, 0.20, by = 0.1)) +
-  labs(y="-log10(unadjusted p-value)", x = "Effect size (%)") +
+  
+  labs(y="-log10(unadjusted p-value)", x = "Effect size (% DNAm)") +
   theme_bw() +
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
@@ -853,7 +889,6 @@ volcano_plot <- ggplot(diff_pvals_tech,
         axis.text.x = element_text(size=9),
         axis.text.y = element_text(size=9),
         axis.title = element_blank()) 
-volcano_plot
 
 ggsave(plot = volcano_plot,
        filename = here("figures", 
@@ -973,45 +1008,17 @@ yearone_goi$p.value.no2_y1_2019v_adj <- p.adjust(yearone_goi$p.value.no2_y1_2019
 #reorder according ot unadjusted no2 pvalue
 yearone_goi_order <- yearone_goi[order(yearone_goi$p.value.no2_y1_2019v),]
 
-#reorder goi annotation to be in same order as goi stats
-goi_order <- goi[rownames(yearone_goi_order),]
+# caclculate effect size
+range = max(covariates_geno_ctpcs_tech_cc$no2_y1_2019v) -
+  min(covariates_geno_ctpcs_tech_cc$no2_y1_2019v)
 
-#check identical
-identical(rownames(goi_order), rownames(yearone_goi_order)) #true
-
-#bind
-yearone_goi_df <- cbind(yearone_goi_order, goi_order)
-
-# order according to pvalue
-yearone_goi_df_pval <- yearone_goi_df  %>% arrange(p.value.no2_y1_2019v)
-
-# add delta beta
-yearone_goi_df_pval_db <- merge(yearone_goi_df_pval, diff_pvals_tech, by="row.names", all.x=T) 
+yearone_goi_order$no2_y1_2019v_effect_size <- yearone_goi_order$estimate.no2_y1_2019v * range
 
 # write out table for all GOIs
-write.csv(yearone_goi_df_pval_db, 
+write.csv(yearone_goi_order, 
           file=here("tables", 
                     "yearone",
-                    "2022-10-07_goi_postnatal_cpgs.csv"))
-
-# write table of top ten 
-write.csv(yearone_goi_df_pval_db %>% 
-            subset(effect_size > 0.025 | effect_size < -0.025) %>% 
-            subset(-log10(p.value.no2_y1_2019v) > 1.6),
-          here("tables", 
-               "yearone", 
-               "2022-10-07_top10goi_yearone_cpgs.csv"))
-
-# use top table to get 95% CI
-goi_df_pval_db_sig <- yearone_goi_df_pval_db %>% 
-  subset(effect_size > 0.025 | effect_size < -0.025) %>% 
-  subset(-log10(p.value.no2_y1_2019v) > 1.6)
-
-#write as .csv
-write.csv(goi_df_pval_db_sig, 
-          here("tables", 
-               "yearone", 
-               "2022-10-07_toptable_yearone_goi.csv"))
+                    "2022-11-18_goi_postnatal_cpgs.csv"))
 
 
 ################
@@ -1156,14 +1163,14 @@ comb_dat <- diff_pvals_tech %>%
   select(pval_no2_y1_2019v, chr, pos, Name) %>%
   mutate(chr = str_sub(chr, 4,5),
          end = pos + 1) %>%
-  rename("p" =pval_no2_y1_2019v,
-         "start" = pos,
-         "probe" = Name)
+  dplyr::rename("p" =pval_no2_y1_2019v,
+                "start" = pos,
+                "probe" = Name)
 
 # results stored in home directory 
-ENmix::combp(comb_dat, 
-             seed = 0.01,
-             verbose = T)
+combp(comb_dat, 
+      seed = 0.01,
+      verbose = T)
 
 # read in csv of dmrs
 resu_combp <- read_csv(here("output_data",
@@ -1218,9 +1225,9 @@ combp_anno_df_es_sub %>%
 
 # write out annotation for dmrs
 write.csv(combp_anno_df_es_sub,
-          here("output_data",
-               "linear_regression",
-               "2022-10-07_postnatalspecific_no2_combp_annotation_sigDMRs.csv"))
+          here("tables",
+               "yearone",
+               "2022-11-23_postnatalspecific_no2_combp_annotation_sigDMRs.csv"))
 ```
 
 
@@ -1313,6 +1320,48 @@ ggsave(plot = manhat,
        height = 5, width = 15, units = "cm")
 ```
 
+### mQTLdb cross check
+
+Check whether CpGs that compose DMRs are annotated as potential mQTLs in mQTLdb.com. I copied the list of CpGs contained in DMRs into mQTLdb then saved the outputted data to compare whether the CpGs appear in hits here. 
+```{r mqtl_check}
+# load mQTL data
+# birth_mqtls <- read.csv(here("input_data",
+#                              "mQTLdb_lists", 
+#                              "CHILD_postnatalspecific_dmr_cpgs_mqtldb_birth.csv"))
+# 
+# # subset mqtls for pval and effect size according to guant (2016; PMID: 27036880)
+# birth_mqtls_sub <- birth_mqtls %>%  
+#   subset(p.value< 1.0e-14 & Effect.Size > 0.02)
+# 
+# childhood_mqtls <- read.csv(here("input_data",
+#                                  "mQTLdb_lists", 
+#                                  "CHILD_postnatal_specific_dmr_cpgs_mqtldb_childhood.csv"))
+# 
+# # subset mqtls for pval and effect size according to guant (2016; PMID: 27036880)
+childhood_mqtls_sub <- childhood_mqtls %>%  
+  subset(p.value< 1.0e-14 & Effect.Size > 0.02)
+
+# annotate individual cpgs within DMRs as a potential mqtl or not
+# combp_anno_df_es_sub_mqtls <- combp_anno_df_es_sub %>%
+#   mutate(birth_mqtl = ifelse(Name %in% (birth_mqtls %>% 
+#                                     distinct(CpG) %>% 
+#                                     pull(CpG)), TRUE, FALSE))
+# 
+# combp_anno_df_es_sub_mqtls <- combp_anno_df_es_sub_mqtls %>%
+#   mutate(childhood_mqtl = ifelse(Name %in% (childhood_mqtls %>% 
+#                                     distinct(CpG) %>% 
+#                                     pull(CpG)), TRUE, FALSE))
+
+
+# write out annotation for dmrs
+# write.csv(combp_anno_df_es_sub_mqtls,
+#           here("tables",
+#                "yearone",
+#                "2022-11-20_yearone_no2_combp_annotation_sigDMRs_mQTL_annotation.csv"))
+
+```
+
+
 
 Examine whether DNAm at significant cpgs/dmrs is associated with reported wheeze at age one. In previous CHILD paper [(PMID: 26424567)](https://www.science.org/doi/10.1126/scitranslmed.aab2271) wheeze was defined using wheeze questionnaires. If the child had wheezed with or without a cold during the first year of life (recorded via questionnaires answered by parents at 3, 6, and 12 months), the child was included in the wheezing group. Children were also included in the wheezing group if the CHILD clinician recorded a wheeze during the 1-year clinical assessment.
 
@@ -1372,27 +1421,33 @@ summary(dmr1_mancova_atopy, test="Pillai") # atopy p = 0.0199429
 
 
 longdf_dmr1 <- pivot_longer(covariates_geno_ctpcs_tech_cc_dmr_cpgs %>% 
-                               select(cg00072689, cg01986016, cg03803541, 
-                                      cg15435170, cg17179862, cg20471691, 
-                                      sample_id, clinician_atopy_dx_y1, 
-                                      no2_y1_2019v),
-                             cols = -c(sample_id, clinician_atopy_dx_y1, 
-                                       no2_y1_2019v), 
-                             names_to = "cpg", 
-                             values_to = "dnam") %>%
+                              select(cg00072689, cg01986016, cg03803541, 
+                                     cg15435170, cg17179862, cg20471691, 
+                                     sample_id, clinician_atopy_dx_y1, 
+                                     no2_y1_2019v),
+                            cols = -c(sample_id, clinician_atopy_dx_y1, 
+                                      no2_y1_2019v), 
+                            names_to = "cpg", 
+                            values_to = "dnam") %>%
   mutate(cpg = factor(cpg, levels = c("cg00072689", "cg15435170", "cg01986016", 
-                                      "cg20471691", "cg17179862", "cg03803541"))) 
+                                      "cg20471691", "cg17179862", "cg03803541"))) %>%
+  mutate(no2_colour = ifelse(no2_y1_2019v < 4.69, "first",
+                             ifelse(no2_y1_2019v >=4.69 & no2_y1_2019v < 10.17 , "second", 
+                                    ifelse(no2_y1_2019v >= 10.17  & no2_y1_2019v < 14.94, "third", "fourth")))) %>%
+  mutate(no2_colour = factor(no2_colour, levels = c("first", "second",  "third", "fourth")))
+
 
 dmr1_atopy_vis <- 
   ggplot(longdf_dmr1, aes(x=cpg, y=dnam, 
-                           group = interaction(cpg, clinician_atopy_dx_y1), 
-                           shape = as.factor(clinician_atopy_dx_y1),
-                           color = no2_y1_2019v,
-                           fill = as.factor(clinician_atopy_dx_y1))) +
+                          group = interaction(cpg, clinician_atopy_dx_y1), 
+                          shape = as.factor(clinician_atopy_dx_y1),
+                          color = as.factor(no2_colour),
+                          fill = as.factor(clinician_atopy_dx_y1))) +
   scale_shape_manual(values = c(20, 17), labels = c("No atopy", "Atopy")) +
+  scale_color_manual( values = c("#87a8e8", "#4484fc", "#254A90", "#10203d")) +
   scale_fill_manual(values = c("white", "grey"), labels = c("No atopy", "Atopy")) +
-  geom_violin(draw_quantiles = c(0.5), trim = T, alpha =0.6) +
-  ggbeeswarm::geom_beeswarm(dodge.width=0.9, cex = 1.1, size = 1) +
+    geom_violin(draw_quantiles = c(0.5), trim = T, alpha =0.6) +
+    ggbeeswarm::geom_beeswarm(dodge.width=0.9, cex = 1, size = 0.5, groupOnX = T) +
   theme_bw() +
   scale_x_discrete(labels = c("cg00072689",
                               "cg15435170",
@@ -1402,18 +1457,18 @@ dmr1_atopy_vis <-
                               "cg03803541"),
                    name = element_blank()) +
   scale_y_continuous(name = "DNA methylation (%)") +
-  theme(#legend.position = "none",
-        legend.direction="horizontal",
-        axis.text = element_text(size = 9),
-        panel.grid.major.x = element_blank(),
-        legend.key.size = unit(0.5, 'cm'))
+  theme(legend.position = "none",
+    legend.direction="horizontal",
+    axis.text = element_text(size = 9),
+    panel.grid.major.x = element_blank(),
+    legend.key.size = unit(0.5, 'cm'))
 
 
 ggsave(plot = dmr1_atopy_vis,
        filename  = here("figures",
                         "linear_regression",
                         "postnatal",
-                        "2022-11-11_no2_pn_dmr1_atopy_legend.png"), 
+                        "2022-11-23_no2_pn_dmr1_atopy.png"), 
        width = 12, height = 5, units = "cm")
 
 # check vcov and correlations
@@ -1455,8 +1510,8 @@ summary(meanmeth_lm) # p = 0.337206
 # estimate marginal effects of prenatal NO2 exposure on DNAm
 methmean_no2_me <- ggpredict(meanmeth_lm, terms = "no2_y1_2019v") %>%
   as.data.frame() %>%
-  rename("methmeans" = predicted,
-         "no2_y1_2019v" = x)
+  dplyr::rename("methmeans" = predicted,
+                "no2_y1_2019v" = x)
 
 # plot
 methmean_plot <- ggplot(covariates_geno_ctpcs_tech_cc,
@@ -1469,7 +1524,7 @@ methmean_plot <- ggplot(covariates_geno_ctpcs_tech_cc,
               aes(x = no2_y1_2019v, 
                   ymin = conf.low, ymax = conf.high), 
               alpha = .2) + 
-  geom_point(alpha=0.8, col = "#92C5EB", size=1) + 
+  geom_point(alpha=0.8, col = "#254A90", size=1) + 
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.text = element_text(size=9),
@@ -1482,7 +1537,7 @@ ggsave(plot = methmean_plot,
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal", 
-                       "2022-10-07_pn_global_dnam.png"),
+                       "2022-11-17_pn_global_dnam.png"),
        width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
@@ -1491,7 +1546,7 @@ cor(covariates_geno_ctpcs_tech_cc$methmeans,
     method="pearson") # -0.06392473
 
 # effect size
-summary(meanmeth_lm)$coefficients["no2_y1_2019v", "Estimate"]*range_no2 # -0.0002507753
+summary(meanmeth_lm)$coefficients["no2_y1_2019v", "Estimate"]*range # -0.0002507753
 ```
 
 #### LINE-1 specific DNAm changes
@@ -1500,7 +1555,7 @@ Use LINE1 DNAm as a surrogate for global DNAm.
 ```{r postnatal_line_dnam}
 
 # read in line annotation from UCSC and repeat masker 
-repeats_450k   <- read.delim(file = gzfile(here("input_data", 
+repeats_450k <- read.delim(file = gzfile(here("input_data", 
                                                 "ucsc_rmsk_lines", 
                                                 "ucsc_repeatmasker_enc_methyl450_gm12878.gz")),
                              header = T, skip = 1, sep = "\t")
@@ -1540,8 +1595,8 @@ summary(line_meth_lm) # p = 0.252063
 # estimate marginal effects of prenatal NO2 exposure on DNAm
 line_meth_no2_me <- ggpredict(line_meth_lm, terms = "no2_y1_2019v") %>%
   as.data.frame() %>% 
-  rename("line_meth" = predicted,
-         "no2_y1_2019v" = x)
+  dplyr::rename("line_meth" = predicted,
+                "no2_y1_2019v" = x)
 
 # plot 
 line_dnam_plot <- ggplot(covariates_geno_ctpcs_tech_cc,
@@ -1566,7 +1621,7 @@ ggsave(plot = line_dnam_plot,
        filename = here("figures", 
                        "linear_regression", 
                        "postnatal",
-                       "2022-10-07_postnatal_line_dnam.png"),
+                       "2022-11-18_postnatal_line_dnam.png"),
        width = 4.0, height = 3.2, units = "cm")
 
 # correlation 
@@ -1575,7 +1630,7 @@ cor(covariates_geno_ctpcs_tech_cc$line_meth,
     method="pearson") # -0.1189471
 
 # effect size
-summary(line_meth_lm)$coefficients["no2_y1_2019v", "Estimate"]*range_no2 # -0.0004671128
+summary(line_meth_lm)$coefficients["no2_y1_2019v", "Estimate"]*range # -0.0004671128
 ```
 
 
