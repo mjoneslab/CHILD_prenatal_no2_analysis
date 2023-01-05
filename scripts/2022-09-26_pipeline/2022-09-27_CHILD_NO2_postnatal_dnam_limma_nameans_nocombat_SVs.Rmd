@@ -1230,6 +1230,222 @@ write.csv(combp_anno_df_es_sub,
                "2022-11-23_postnatalspecific_no2_combp_annotation_sigDMRs.csv"))
 ```
 
+"CHARM-style" plots of DMRs
+```{r charm_style_plots}
+
+# subset out dmr 1 cpgs
+covariates_geno_ctpcs_tech_cc_dmr_cpgs <- 
+  cbind(covariates_geno_ctpcs_tech_cc, 
+        t(diff_betas_geno_cc_cpr[combp_anno_df_es_sub %>%
+                                   subset(dmr == 1) %>%
+                                   pull(Name),]))
+
+# rename columns with numbers
+colnames(covariates_geno_ctpcs_tech_cc_dmr_cpgs)[177:182] <-
+  combp_anno_df_es_sub %>%
+  subset(dmr == 1) %>%
+  pull(pos)
+
+# pivot to long
+longdf_dmr1 <- 
+  pivot_longer(covariates_geno_ctpcs_tech_cc_dmr_cpgs %>% 
+                 dplyr::select("46681111", "46681154", "46681401", 
+                               "46681135", "46681362", "46681316",
+                               sample_id, 
+                               no2_y1_2019v),
+               cols = -c(sample_id, 
+                         no2_y1_2019v), 
+               names_to = "cpg", 
+               values_to = "dnam") %>%
+  #mutate(cpg = factor(cpg, levels = c("cg09594291", "cg02749105", "cg24052338"))) %>%
+  mutate(no2_colour = ifelse(no2_y1_2019v < 4.687228, "first",
+                             ifelse(no2_y1_2019v >=4.687228 & no2_y1_2019v < 10.172466 , "second", 
+                                    ifelse(no2_y1_2019v >= 10.172466  & no2_y1_2019v < 14.943722, "third", "fourth")))) %>%
+  mutate(no2_colour = factor(no2_colour, levels = c("first", "second",  "third", "fourth")))
+
+# create charm-like visualization
+dmr1_charm <- 
+  ggplot(longdf_dmr1 %>% 
+           subset(no2_colour %in% c("first", "fourth")) %>%
+           group_by(cpg, no2_colour) %>%
+           summarize(mean_dnam = mean(dnam)), 
+         aes(x=as.numeric(cpg), y=mean_dnam, col = no2_colour)) +
+  scale_color_manual(values = c("#254A90","red"), 
+                     labels = c("First", "Third"),
+                     name = "Prenatal NO2 quantile") +
+  geom_line() + 
+  geom_point(longdf_dmr1 %>% 
+               subset(no2_colour %in% c("first", "fourth")), 
+             mapping = aes(x=as.numeric(cpg), y=dnam, col = no2_colour),
+             size = 0.25, alpha = 0.8) +
+  theme_bw() +
+  scale_x_continuous(name = "Genomic position (Chr17)",
+                     breaks = seq(46681150, 46681350, by = 100)) +
+  scale_y_continuous(name = "DNA methylation (%)") +
+  theme(axis.text = element_text(size = 9, family = "sans"),
+        axis.title = element_text(size = 9, family = "sans"),
+        panel.grid = element_blank(),
+        legend.position = "none",
+        panel.background = element_rect(fill = '#D3D3D3'))
+
+ggsave(plot = dmr1_charm,
+       filename = here("figures",
+                       "linear_regression",
+                       "postnatal",
+                       "2023-01-03_postnatal_dmr1_charm.png"),
+       height = 6, width = 12, units = "cm")
+
+# create genomic region visualization 
+dmr1_from <- combp_anno_df_es_sub %>%
+  subset(dmr == 1) %>%
+  pull(pos) %>%
+  min()
+dmr1_to <- combp_anno_df_es_sub %>%
+  subset(dmr == 1) %>%
+  pull(pos) %>%
+  max()
+dmr1_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr17", 
+                           track = "NCBI RefSeq",
+                           table = "refGene", 
+                           from = dmr1_from, to = dmr1_to,
+                           trackType = "GeneRegionTrack", 
+                           rstarts = "exonStarts", rends = "exonEnds", 
+                           gene = "name", symbol = "name", 
+                           transcript = "name", strand = "strand", 
+                           fill = "#254A90", name = "NCBI RefGene")
+
+# add names
+dmr1_ranges <- ranges(dmr1_refgenes)
+
+# gene refseq gene symbiks abd add to annotation 
+mcols(dmr1_ranges)$symbol <- mapIds(org.Hs.eg.db, 
+                                    gsub("\\.[1-9]$", "", mcols(dmr1_ranges)$symbol),
+                                    "SYMBOL","REFSEQ")
+ranges(dmr1_refgenes) <- dmr1_ranges
+
+
+# get regulatory info from ucsc
+# gm12878 = b cell line
+# hep g2 = epithelial like cell line 
+# hu-vec = human umbilical cord vein 
+# k562 = lymphoblasyt
+# nhkf = lung fibroblasts
+dmr1_chromHmmGm12878 <- UcscTrack(genome = "hg19", chromosome = "chr17", 
+                                  track = "Broad ChromHMM",
+                                  table = "wgEncodeBroadHmmGm12878HMM",
+                                  trackType = "AnnotationTrack", 
+                                  from = 46670000, 
+                                  to  =  46685401,
+                                  start = "chromStart", end = "chromEnd", 
+                                  id = "name", feature = "score", shape = "box", 
+                                  stacking = "dense", fill = "itemRgb",
+                                  name = "GM12878")
+
+# colour according to hmm table 
+dmr1_chromHmmGm12878@dp@pars$fill <- recode(dmr1_chromHmmGm12878@dp@pars$fill, 
+                                            "245,245,245" = "#f5f5f5",
+                                            "255,105,105" = "#ff6969",
+                                            "153,255,102" = "#99ff66",
+                                              "255,0,0" = "#ff0000",
+                                            "0,176,80" = "#00b050",
+                                            "250,202,0" = "#faca00",
+                                            "255,252,4" = "#fffc04",
+                                            "127,127,127" = "#7f7f7f",
+                                            "10,190,254" = "#0abefe",
+                                            "207,11,198" = "#cf0bc6")
+
+dmr1_chromHmmGmNhlf <- UcscTrack(genome = "hg19", chromosome = "chr17",
+                                 track = "Broad ChromHMM",
+                                 table = "wgEncodeBroadHmmNhlfHMM",
+                                 trackType = "AnnotationTrack",
+                                   from = 46670000, 
+                                  to  =  46685401,
+                                 start = "chromStart", end = "chromEnd",
+                                 id = "name", feature = "score", shape = "box",
+                                 stacking = "dense", fill = "itemRgb",
+                                 name = "NHLF")
+
+dmr1_chromHmmGmNhlf@dp@pars$fill <- recode(dmr1_chromHmmGmNhlf@dp@pars$fill, 
+                                           "250,202,0" = "#faca00",
+                                           "255,0,0" = "#ff0000",
+                                            "0,176,80" = "#00b050",
+                                           "255,105,105" = "#ff6969",
+                                           "245,245,245" = "#f5f5f5",
+                                           "255,252,4" = "#fffc04",
+                                           "10,190,254"  = "#0abefe",
+                                           "127,127,127" = "#7f7f7f",
+                                           "153,255,102" = "#99ff66")
+
+dmr1_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr17", 
+                               track = "Broad ChromHMM",
+                               table = "wgEncodeBroadHmmK562HMM",
+                               trackType = "AnnotationTrack", 
+                                from = 46670000, 
+                                  to  =  46685401,
+                               start = "chromStart", end = "chromEnd", 
+                               id = "name", feature = "score", shape = "box", 
+                               stacking = "dense", fill = "itemRgb",
+                               name = "K562")
+
+dmr1_chromHmmk562@dp@pars$fill <- recode(dmr1_chromHmmk562@dp@pars$fill,
+                                         "127,127,127" = "#7f7f7f",
+                                           "255,0,0" = "#ff0000",
+                                         "250,202,0" = "#faca00",
+                                          "0,176,80" = "#00b050",
+                                                "255,252,4" = "#fffc04",
+                                          "255,105,105" = "#ff6969",
+                                         "153,255,102" = "#99ff66",
+                                         "245,245,245" = "#f5f5f5",
+                                         "10,190,254"  = "#0abefe")
+
+dmr1_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr17", 
+                                 track = "Broad ChromHMM",
+                                 table = "wgEncodeBroadHmmH1hescHMM",
+                                 trackType = "AnnotationTrack", 
+                                   from = 46670000, 
+                                  to  =  46685401,
+                                 start = "chromStart", end = "chromEnd", 
+                                 id = "name", feature = "score", shape = "box", 
+                                 stacking = "dense", fill = "itemRgb",
+                                 name = "HESC")
+
+dmr1_chromHmmH1hesc@dp@pars$fill <- recode(dmr1_chromHmmH1hesc@dp@pars$fill,
+                                           "127,127,127" = "#7f7f7f",
+                                           "245,245,245" = "#f5f5f5",
+                                            "255,105,105" = "#ff6969",
+                                           "250,202,0" = "#faca00",
+                                           "153,255,102" = "#99ff66",
+                                            "0,176,80" = "#00b050",
+                                             "255,0,0" = "#ff0000",
+                                                  "255,252,4" = "#fffc04",
+                                           "10,190,254"  = "#0abefe",
+                                           "207,11,198" = "#cf0bc6")
+
+axTrack <- GenomeAxisTrack()
+
+# highlight track for DMR
+dmr1_ht <- HighlightTrack(trackList = list(dmr1_refgenes, 
+                                           dmr1_chromHmmGm12878, 
+                                           dmr1_chromHmmk562,
+                                           dmr1_chromHmmH1hesc,
+                                           dmr1_chromHmmGmNhlf,
+                                           axTrack),
+                          start = dmr1_from,
+                          end = dmr1_to, 
+                          chromosome = 17, fill = "lightgrey", col = "lightgrey")
+
+png(here("figures",
+         "linear_regression",
+         "postnatal",
+         "2023-01-03_postnatal_dmr1_gviz.png"),
+    height = 6, width = 10.5, units = "cm", res = 300)
+plotTracks(list(dmr1_ht),  
+           transcriptAnnotation = "symbol",
+           geneAnnotation = "gene",
+           showTitle = F)
+dev.off()
+```
+
 
 Manhattan plot of CpGs in DMRS
 ```{r dmr_manhattan}
