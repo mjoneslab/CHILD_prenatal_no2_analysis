@@ -1304,6 +1304,7 @@ dmr1_to <- combp_anno_df_es_sub %>%
   subset(dmr == 1) %>%
   pull(pos) %>%
   max()
+
 dmr1_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr17", 
                            track = "NCBI RefSeq",
                            table = "refGene", 
@@ -1376,28 +1377,6 @@ dmr1_chromHmmGmNhlf@dp@pars$fill <- recode(dmr1_chromHmmGmNhlf@dp@pars$fill,
                                            "127,127,127" = "#7f7f7f",
                                            "153,255,102" = "#99ff66")
 
-dmr1_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr17", 
-                               track = "Broad ChromHMM",
-                               table = "wgEncodeBroadHmmK562HMM",
-                               trackType = "AnnotationTrack", 
-                                from = 46670000, 
-                                  to  =  46685401,
-                               start = "chromStart", end = "chromEnd", 
-                               id = "name", feature = "score", shape = "box", 
-                               stacking = "dense", fill = "itemRgb",
-                               name = "K562")
-
-dmr1_chromHmmk562@dp@pars$fill <- recode(dmr1_chromHmmk562@dp@pars$fill,
-                                         "127,127,127" = "#7f7f7f",
-                                           "255,0,0" = "#ff0000",
-                                         "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                                "255,252,4" = "#fffc04",
-                                          "255,105,105" = "#ff6969",
-                                         "153,255,102" = "#99ff66",
-                                         "245,245,245" = "#f5f5f5",
-                                         "10,190,254"  = "#0abefe")
-
 dmr1_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr17", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -1426,7 +1405,6 @@ axTrack <- GenomeAxisTrack()
 # highlight track for DMR
 dmr1_ht <- HighlightTrack(trackList = list(dmr1_refgenes, 
                                            dmr1_chromHmmGm12878, 
-                                           dmr1_chromHmmk562,
                                            dmr1_chromHmmH1hesc,
                                            dmr1_chromHmmGmNhlf,
                                            axTrack),
@@ -1434,10 +1412,14 @@ dmr1_ht <- HighlightTrack(trackList = list(dmr1_refgenes,
                           end = dmr1_to, 
                           chromosome = 17, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr1_chromHmmGm12878@dp@pars$fill, 
+         dmr1_chromHmmGmNhlf@dp@pars$fill, 
+         dmr1_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "postnatal",
-         "2023-01-03_postnatal_dmr1_gviz.png"),
+         "2023-01-04_postnatal_dmr1_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr1_ht),  
            transcriptAnnotation = "symbol",

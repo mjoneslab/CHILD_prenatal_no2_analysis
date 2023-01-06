@@ -2729,22 +2729,6 @@ dmr1_chromHmmGmNhlf@dp@pars$fill <- recode(dmr1_chromHmmGmNhlf@dp@pars$fill,
                                            "127,127,127" = "#7f7f7f",
                                            "153,255,102" = "#99ff66")
 
-# dmr1_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr7", 
-#                                track = "Broad ChromHMM",
-#                                table = "wgEncodeBroadHmmK562HMM",
-#                                trackType = "AnnotationTrack", 
-#                                from = 27146628, 
-#                                to  =  27195547,
-#                                start = "chromStart", end = "chromEnd", 
-#                                id = "name", feature = "score", shape = "box", 
-#                                stacking = "dense", fill = "itemRgb",
-#                                name = "K562")
-# 
-# dmr1_chromHmmk562@dp@pars$fill <- recode(dmr1_chromHmmk562@dp@pars$fill,
-#                                          "127,127,127" = "#7f7f7f",
-#                                          "245,245,245" = "#f5f5f5",
-#                                          "10,190,254"  = "#0abefe")
-
 dmr1_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr7", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -2765,10 +2749,15 @@ dmr1_chromHmmH1hesc@dp@pars$fill <- recode(dmr1_chromHmmH1hesc@dp@pars$fill,
 
 axTrack <- GenomeAxisTrack()
 
+# check colours to be included
+unique(c(dmr1_chromHmmGm12878@dp@pars$fill, 
+         dmr1_chromHmmGmNhlf@dp@pars$fill, 
+         dmr1_chromHmmH1hesc@dp@pars$fill))
+
+
 # highlight track for DMR
 dmr1_ht <- HighlightTrack(trackList = list(dmr1_refgenes, 
                                            dmr1_chromHmmGm12878, 
-                                           #dmr1_chromHmmk562,
                                            dmr1_chromHmmH1hesc,
                                            dmr1_chromHmmGmNhlf,
                                            axTrack),
@@ -2833,7 +2822,7 @@ dmr2_charm <-
              mapping = aes(x=as.numeric(cpg), y=dnam, col = no2_colour),
              size = 0.25, alpha = 0.8) +
   theme_bw() +
-  scale_x_continuous(name = "Genomic position", breaks = seq(27187200, 27187600,by=200)) +
+  scale_x_continuous(name = "Genomic position (Chr7)", breaks = seq(27187200, 27187600,by=200)) +
   scale_y_continuous(name = "DNA methylation (%)") +
   theme(axis.text = element_text(size = 9, family = "sans"),
         axis.title = element_text(size = 9, family = "sans"),
@@ -2845,7 +2834,7 @@ ggsave(plot = dmr2_charm,
        filename = here("figures",
                        "linear_regression",
                        "prenatal",
-                       "2023-01-03_dmr2_charm.png"),
+                       "2023-01-04_dmr2_charm.png"),
        height = 6, width = 12, units = "cm")
 
 # create genomic region visualization 
@@ -2919,23 +2908,6 @@ dmr2_chromHmmGmNhlf@dp@pars$fill <- recode(dmr2_chromHmmGmNhlf@dp@pars$fill,
                                            "127,127,127" = "#7f7f7f",
                                            "153,255,102" = "#99ff66")
 
-dmr2_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr7", 
-                               track = "Broad ChromHMM",
-                               table = "wgEncodeBroadHmmK562HMM",
-                               trackType = "AnnotationTrack", 
-                               from = 27146628, 
-                               to  =  27195547,
-                               start = "chromStart", end = "chromEnd", 
-                               id = "name", feature = "score", shape = "box", 
-                               stacking = "dense", fill = "itemRgb",
-                               name = "K562")
-
-dmr2_chromHmmk562@dp@pars$fill <- recode(dmr2_chromHmmk562@dp@pars$fill,
-                                         "127,127,127" = "#7f7f7f",
-                                         "245,245,245" = "#f5f5f5",
-                                         "10,190,254"  = "#0abefe",
-                                         "250,202,0" = "#faca00")
-
 dmr2_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr7", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -2954,10 +2926,14 @@ dmr2_chromHmmH1hesc@dp@pars$fill <- recode(dmr2_chromHmmH1hesc@dp@pars$fill,
                                            "207,11,198" = "#cf0bc6",
                                            "250,202,0" = "#faca00")
 
+# check colours to be included
+unique(c(dmr2_chromHmmGm12878@dp@pars$fill, 
+         dmr2_chromHmmGmNhlf@dp@pars$fill, 
+         dmr2_chromHmmH1hesc@dp@pars$fill))
+
 # highlight track for DMR
 dmr2_ht <- HighlightTrack(trackList = list(dmr2_refgenes, 
                                            dmr2_chromHmmGm12878, 
-                                           dmr2_chromHmmk562,
                                            dmr2_chromHmmH1hesc,
                                            dmr2_chromHmmGmNhlf,
                                            axTrack),
@@ -2968,7 +2944,7 @@ dmr2_ht <- HighlightTrack(trackList = list(dmr2_refgenes,
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr2_gviz.png"),
+         "2023-01-04_dmr2_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr2_ht),  
            transcriptAnnotation = "symbol",
@@ -3113,28 +3089,6 @@ dmr3_chromHmmGmNhlf@dp@pars$fill <- recode(dmr3_chromHmmGmNhlf@dp@pars$fill,
                                            "207,11,198" = "#cf0bc6",
                                            "10,190,254"  = "#0abefe")
 
-dmr3_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr8", 
-                               track = "Broad ChromHMM",
-                               table = "wgEncodeBroadHmmK562HMM",
-                               trackType = "AnnotationTrack", 
-                               from = 22110000, 
-                               to  =  22210000,
-                               start = "chromStart", end = "chromEnd", 
-                               id = "name", feature = "score", shape = "box", 
-                               stacking = "dense", fill = "itemRgb",
-                               name = "K562")
-
-dmr3_chromHmmk562@dp@pars$fill <- recode(dmr3_chromHmmk562@dp@pars$fill,
-                                         "127,127,127" = "#7f7f7f",
-                                         "245,245,245" = "#f5f5f5",
-                                         "10,190,254"  = "#0abefe",
-                                         "250,202,0" = "#faca00",
-                                         "0,176,80" = "#00b050",
-                                         "153,255,102" = "#99ff66",
-                                         "255,252,4" = "#fffc04",
-                                         "207,11,198" = "#cf0bc6",
-                                         "255,105,105" = "#ff6969")
-
 dmr3_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr8", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -3160,7 +3114,6 @@ dmr3_chromHmmH1hesc@dp@pars$fill <- recode(dmr3_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr3_ht <- HighlightTrack(trackList = list(dmr3_refgenes, 
                                            dmr3_chromHmmGm12878, 
-                                           dmr3_chromHmmk562,
                                            dmr3_chromHmmH1hesc,
                                            dmr3_chromHmmGmNhlf,
                                            axTrack),
@@ -3168,10 +3121,15 @@ dmr3_ht <- HighlightTrack(trackList = list(dmr3_refgenes,
                           end = dmr3_to, 
                           chromosome = 8, fill = "lightgrey", col = "lightgrey")
 
+# check colours to be included
+unique(c(dmr3_chromHmmGm12878@dp@pars$fill, 
+         dmr3_chromHmmGmNhlf@dp@pars$fill, 
+         dmr3_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr3_gviz.png"),
+         "2023-01-04_dmr3_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr3_ht),  
            transcriptAnnotation = "symbol",
@@ -3315,29 +3273,6 @@ dmr4_chromHmmGmNhlf@dp@pars$fill <- recode(dmr4_chromHmmGmNhlf@dp@pars$fill,
                                            "207,11,198" = "#cf0bc6",
                                            "10,190,254"  = "#0abefe")
 
-dmr4_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr17", 
-                               track = "Broad ChromHMM",
-                               table = "wgEncodeBroadHmmK562HMM",
-                               trackType = "AnnotationTrack", 
-                               from = 36580000, 
-                               to  =  36670000,
-                               start = "chromStart", end = "chromEnd", 
-                               id = "name", feature = "score", shape = "box", 
-                               stacking = "dense", fill = "itemRgb",
-                               name = "K562")
-
-dmr4_chromHmmk562@dp@pars$fill <- recode(dmr4_chromHmmk562@dp@pars$fill,
-                                         "127,127,127" = "#7f7f7f",
-                                         "245,245,245" = "#f5f5f5",
-                                         "10,190,254"  = "#0abefe",
-                                         "250,202,0" = "#faca00",
-                                         "0,176,80" = "#00b050",
-                                         "153,255,102" = "#99ff66",
-                                         "255,252,4" = "#fffc04",
-                                         "207,11,198" = "#cf0bc6",
-                                         "255,0,0" = "#ff0000",
-                                         "255,105,105" = "#ff6969")
-
 dmr4_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr17", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -3361,10 +3296,14 @@ dmr4_chromHmmH1hesc@dp@pars$fill <- recode(dmr4_chromHmmH1hesc@dp@pars$fill,
                                            "255,252,4" = "#fffc04",
                                            "255,105,105" = "#ff6969",)
 
+# check colours to be included
+unique(c(dmr4_chromHmmGm12878@dp@pars$fill, 
+         dmr4_chromHmmGmNhlf@dp@pars$fill, 
+         dmr4_chromHmmH1hesc@dp@pars$fill))
+
 # highlight track for DMR
 dmr4_ht <- HighlightTrack(trackList = list(dmr4_refgenes, 
                                            dmr4_chromHmmGm12878, 
-                                           dmr4_chromHmmk562,
                                            dmr4_chromHmmH1hesc,
                                            dmr4_chromHmmGmNhlf,
                                            axTrack),
@@ -3375,7 +3314,7 @@ dmr4_ht <- HighlightTrack(trackList = list(dmr4_refgenes,
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr4_gviz.png"),
+         "2023-01-04_dmr4_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr4_ht),  
            transcriptAnnotation = "symbol",
@@ -3520,29 +3459,6 @@ dmr5_chromHmmGmNhlf@dp@pars$fill <- recode(dmr5_chromHmmGmNhlf@dp@pars$fill,
                                            "207,11,198" = "#cf0bc6",
                                            "10,190,254"  = "#0abefe")
 
-dmr5_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr5", 
-                               track = "Broad ChromHMM",
-                               table = "wgEncodeBroadHmmK562HMM",
-                               trackType = "AnnotationTrack", 
-                             from = 150290000,
-                            to = 150360000, 
-                               start = "chromStart", end = "chromEnd", 
-                               id = "name", feature = "score", shape = "box", 
-                               stacking = "dense", fill = "itemRgb",
-                               name = "K562")
-
-dmr5_chromHmmk562@dp@pars$fill <- recode(dmr5_chromHmmk562@dp@pars$fill,
-                                         "127,127,127" = "#7f7f7f",
-                                         "245,245,245" = "#f5f5f5",
-                                         "10,190,254"  = "#0abefe",
-                                         "250,202,0" = "#faca00",
-                                         "0,176,80" = "#00b050",
-                                         "153,255,102" = "#99ff66",
-                                         "255,252,4" = "#fffc04",
-                                         "207,11,198" = "#cf0bc6",
-                                         "255,0,0" = "#ff0000",
-                                         "255,105,105" = "#ff6969")
-
 dmr5_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr5", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -3569,7 +3485,6 @@ dmr5_chromHmmH1hesc@dp@pars$fill <- recode(dmr5_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr5_ht <- HighlightTrack(trackList = list(dmr5_refgenes, 
                                            dmr5_chromHmmGm12878, 
-                                           dmr5_chromHmmk562,
                                            dmr5_chromHmmH1hesc,
                                            dmr5_chromHmmGmNhlf,
                                            axTrack),
@@ -3577,10 +3492,16 @@ dmr5_ht <- HighlightTrack(trackList = list(dmr5_refgenes,
                           end = dmr5_to, 
                           chromosome = 5, fill = "lightgrey", col = "lightgrey")
 
+# check colours to be included
+unique(c(dmr5_chromHmmGm12878@dp@pars$fill, 
+         dmr5_chromHmmGmNhlf@dp@pars$fill, 
+         dmr5_chromHmmH1hesc@dp@pars$fill))
+
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr5_gviz.png"),
+         "2023-01-05_dmr5_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr5_ht),  
            transcriptAnnotation = "symbol",
@@ -3724,29 +3645,6 @@ dmr6_chromHmmGmNhlf@dp@pars$fill <- recode(dmr6_chromHmmGmNhlf@dp@pars$fill,
                                            "207,11,198" = "#cf0bc6",
                                            "10,190,254"  = "#0abefe")
 
-dmr6_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr2", 
-                               track = "Broad ChromHMM",
-                               table = "wgEncodeBroadHmmK562HMM",
-                               trackType = "AnnotationTrack", 
-                               from = dmr6_from, 
-                               to  =  dmr6_to,
-                               start = "chromStart", end = "chromEnd", 
-                               id = "name", feature = "score", shape = "box", 
-                               stacking = "dense", fill = "itemRgb",
-                               name = "K562")
-
-dmr6_chromHmmk562@dp@pars$fill <- recode(dmr6_chromHmmk562@dp@pars$fill,
-                                         "127,127,127" = "#7f7f7f",
-                                         "245,245,245" = "#f5f5f5",
-                                         "10,190,254"  = "#0abefe",
-                                         "250,202,0" = "#faca00",
-                                         "0,176,80" = "#00b050",
-                                         "153,255,102" = "#99ff66",
-                                         "255,252,4" = "#fffc04",
-                                         "207,11,198" = "#cf0bc6",
-                                         "255,0,0" = "#ff0000",
-                                         "255,105,105" = "#ff6969")
-
 dmr6_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr2", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -3773,7 +3671,6 @@ dmr6_chromHmmH1hesc@dp@pars$fill <- recode(dmr6_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr6_ht <- HighlightTrack(trackList = list(dmr6_refgenes, 
                                            dmr6_chromHmmGm12878, 
-                                           dmr6_chromHmmk562,
                                            dmr6_chromHmmH1hesc,
                                            dmr6_chromHmmGmNhlf,
                                            axTrack),
@@ -3781,10 +3678,17 @@ dmr6_ht <- HighlightTrack(trackList = list(dmr6_refgenes,
                           end = dmr6_to, 
                           chromosome = 2, fill = "lightgrey", col = "lightgrey")
 
+
+# check colours to be included
+unique(c(dmr6_chromHmmGm12878@dp@pars$fill, 
+         dmr6_chromHmmGmNhlf@dp@pars$fill, 
+         dmr6_chromHmmH1hesc@dp@pars$fill))
+
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr6_gviz.png"),
+         "2023-01-04_dmr6_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr6_ht),  
            transcriptAnnotation = "symbol",
@@ -3930,29 +3834,6 @@ dmr7_chromHmmGmNhlf@dp@pars$fill <- recode(dmr7_chromHmmGmNhlf@dp@pars$fill,
                                            "207,11,198" = "#cf0bc6",
                                            "10,190,254"  = "#0abefe")
 
-dmr7_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr7", 
-                               track = "Broad ChromHMM",
-                               table = "wgEncodeBroadHmmK562HMM",
-                               trackType = "AnnotationTrack", 
-                               from = 26797182,
-                               to = 26950000,
-                               start = "chromStart", end = "chromEnd", 
-                               id = "name", feature = "score", shape = "box", 
-                               stacking = "dense", fill = "itemRgb",
-                               name = "K562")
-
-dmr7_chromHmmk562@dp@pars$fill <- recode(dmr7_chromHmmk562@dp@pars$fill,
-                                         "127,127,127" = "#7f7f7f",
-                                         "245,245,245" = "#f5f5f5",
-                                         "10,190,254"  = "#0abefe",
-                                         "250,202,0" = "#faca00",
-                                         "0,176,80" = "#00b050",
-                                         "153,255,102" = "#99ff66",
-                                         "255,252,4" = "#fffc04",
-                                         "207,11,198" = "#cf0bc6",
-                                         "255,0,0" = "#ff0000",
-                                         "255,105,105" = "#ff6969")
-
 dmr7_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr7", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -3979,7 +3860,6 @@ dmr7_chromHmmH1hesc@dp@pars$fill <- recode(dmr7_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr7_ht <- HighlightTrack(trackList = list(dmr7_refgenes, 
                                            dmr7_chromHmmGm12878, 
-                                           dmr7_chromHmmk562,
                                            dmr7_chromHmmH1hesc,
                                            dmr7_chromHmmGmNhlf,
                                            axTrack),
@@ -3987,10 +3867,15 @@ dmr7_ht <- HighlightTrack(trackList = list(dmr7_refgenes,
                           end = dmr7_to, 
                           chromosome = 7, fill = "lightgrey", col = "lightgrey")
 
+# check colours to be included
+unique(c(dmr7_chromHmmGm12878@dp@pars$fill, 
+         dmr7_chromHmmGmNhlf@dp@pars$fill, 
+         dmr7_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr7_gviz.png"),
+         "2023-01-04_dmr7_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr7_ht),  
            transcriptAnnotation = "symbol",
@@ -4140,29 +4025,6 @@ dmr8_chromHmmGmNhlf@dp@pars$fill <- recode(dmr8_chromHmmGmNhlf@dp@pars$fill,
                                            "207,11,198" = "#cf0bc6",
                                            "10,190,254"  = "#0abefe")
 
-dmr8_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr1", 
-                               track = "Broad ChromHMM",
-                               table = "wgEncodeBroadHmmK562HMM",
-                               trackType = "AnnotationTrack", 
-                               from = 248099345,
-                               to = 248300000,
-                               start = "chromStart", end = "chromEnd", 
-                               id = "name", feature = "score", shape = "box", 
-                               stacking = "dense", fill = "itemRgb",
-                               name = "K562")
-
-dmr8_chromHmmk562@dp@pars$fill <- recode(dmr8_chromHmmk562@dp@pars$fill,
-                                         "127,127,127" = "#7f7f7f",
-                                         "245,245,245" = "#f5f5f5",
-                                         "10,190,254"  = "#0abefe",
-                                         "250,202,0" = "#faca00",
-                                         "0,176,80" = "#00b050",
-                                         "153,255,102" = "#99ff66",
-                                         "255,252,4" = "#fffc04",
-                                         "207,11,198" = "#cf0bc6",
-                                         "255,0,0" = "#ff0000",
-                                         "255,105,105" = "#ff6969")
-
 dmr8_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr1", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -4189,7 +4051,6 @@ dmr8_chromHmmH1hesc@dp@pars$fill <- recode(dmr8_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr8_ht <- HighlightTrack(trackList = list(dmr8_refgenes, 
                                            dmr8_chromHmmGm12878, 
-                                           dmr8_chromHmmk562,
                                            dmr8_chromHmmH1hesc,
                                            dmr8_chromHmmGmNhlf,
                                            axTrack),
@@ -4197,10 +4058,16 @@ dmr8_ht <- HighlightTrack(trackList = list(dmr8_refgenes,
                           end = dmr8_to, 
                           chromosome = 1, fill = "lightgrey", col = "lightgrey")
 
+
+# check colours to be included
+unique(c(dmr8_chromHmmGm12878@dp@pars$fill, 
+         dmr8_chromHmmGmNhlf@dp@pars$fill, 
+         dmr8_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr8_gviz.png"),
+         "2023-01-04_dmr8_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr8_ht),  
            transcriptAnnotation = "symbol",
@@ -4348,29 +4215,6 @@ dmr9_chromHmmGmNhlf@dp@pars$fill <- recode(dmr9_chromHmmGmNhlf@dp@pars$fill,
                                            "207,11,198" = "#cf0bc6",
                                            "10,190,254"  = "#0abefe")
 
-dmr9_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr17", 
-                               track = "Broad ChromHMM",
-                               table = "wgEncodeBroadHmmK562HMM",
-                               trackType = "AnnotationTrack", 
-                               from = 46665500,
-                               to = dmr9_to,
-                               start = "chromStart", end = "chromEnd", 
-                               id = "name", feature = "score", shape = "box", 
-                               stacking = "dense", fill = "itemRgb",
-                               name = "K562")
-
-dmr9_chromHmmk562@dp@pars$fill <- recode(dmr9_chromHmmk562@dp@pars$fill,
-                                         "127,127,127" = "#7f7f7f",
-                                         "245,245,245" = "#f5f5f5",
-                                         "10,190,254"  = "#0abefe",
-                                         "250,202,0" = "#faca00",
-                                         "0,176,80" = "#00b050",
-                                         "153,255,102" = "#99ff66",
-                                         "255,252,4" = "#fffc04",
-                                         "207,11,198" = "#cf0bc6",
-                                         "255,0,0" = "#ff0000",
-                                         "255,105,105" = "#ff6969")
-
 dmr9_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr17", 
                                  track = "Broad ChromHMM",
                                  table = "wgEncodeBroadHmmH1hescHMM",
@@ -4397,7 +4241,6 @@ dmr9_chromHmmH1hesc@dp@pars$fill <- recode(dmr9_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr9_ht <- HighlightTrack(trackList = list(dmr9_refgenes, 
                                            dmr9_chromHmmGm12878, 
-                                           dmr9_chromHmmk562,
                                            dmr9_chromHmmH1hesc,
                                            dmr9_chromHmmGmNhlf,
                                            axTrack),
@@ -4405,10 +4248,16 @@ dmr9_ht <- HighlightTrack(trackList = list(dmr9_refgenes,
                           end = dmr9_to, 
                           chromosome = 17, fill = "lightgrey", col = "lightgrey")
 
+
+# check colours to be included
+unique(c(dmr9_chromHmmGm12878@dp@pars$fill, 
+         dmr9_chromHmmGmNhlf@dp@pars$fill, 
+         dmr9_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr9_gviz.png"),
+         "2023-01-04_dmr9_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr9_ht),  
            transcriptAnnotation = "symbol",
@@ -4493,7 +4342,7 @@ dmr10_to <- combp_anno_df_es_sub_escutoff %>%
 dmr10_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr7", 
                             track = "NCBI RefSeq", 
                             table = "refGene",
-                            from = dmr10_from, to = dmr10_to,
+                            from = 27168000, to = dmr10_to,
                             trackType = "GeneRegionTrack", 
                             rstarts = "exonStarts", rends = "exonEnds", 
                             gene = "name", symbol = "name", 
@@ -4558,29 +4407,6 @@ dmr10_chromHmmGmNhlf@dp@pars$fill <- recode(dmr10_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr10_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr7", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = dmr10_from,
-                                to = 27191051,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr10_chromHmmk562@dp@pars$fill <- recode(dmr10_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr10_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr7", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -4607,7 +4433,6 @@ dmr10_chromHmmH1hesc@dp@pars$fill <- recode(dmr10_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr10_ht <- HighlightTrack(trackList = list(dmr10_refgenes, 
                                             dmr10_chromHmmGm12878, 
-                                            dmr10_chromHmmk562,
                                             dmr10_chromHmmH1hesc,
                                             dmr10_chromHmmGmNhlf,
                                             axTrack),
@@ -4615,10 +4440,15 @@ dmr10_ht <- HighlightTrack(trackList = list(dmr10_refgenes,
                            end = dmr10_to, 
                            chromosome = 7, fill = "lightgrey", col = "lightgrey")
 
+# check colours to be included
+unique(c(dmr10_chromHmmGm12878@dp@pars$fill, 
+         dmr10_chromHmmGmNhlf@dp@pars$fill, 
+         dmr10_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr10_gviz.png"),
+         "2023-01-04_dmr10_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr10_ht),  
            transcriptAnnotation = "symbol",
@@ -4766,29 +4596,6 @@ dmr11_chromHmmGmNhlf@dp@pars$fill <- recode(dmr11_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr11_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr10", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = 134834613,
-                                  to = 134954910,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr11_chromHmmk562@dp@pars$fill <- recode(dmr11_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr11_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr10", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -4815,7 +4622,6 @@ dmr11_chromHmmH1hesc@dp@pars$fill <- recode(dmr11_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr11_ht <- HighlightTrack(trackList = list(dmr11_refgenes, 
                                             dmr11_chromHmmGm12878, 
-                                            dmr11_chromHmmk562,
                                             dmr11_chromHmmH1hesc,
                                             dmr11_chromHmmGmNhlf,
                                             axTrack),
@@ -4823,10 +4629,15 @@ dmr11_ht <- HighlightTrack(trackList = list(dmr11_refgenes,
                            end = dmr11_to, 
                            chromosome = 7, fill = "lightgrey", col = "lightgrey")
 
+# check colours to be included
+unique(c(dmr11_chromHmmGm12878@dp@pars$fill, 
+         dmr11_chromHmmGmNhlf@dp@pars$fill, 
+         dmr11_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr11_gviz.png"),
+         "2023-01-04_dmr11_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr11_ht),  
            transcriptAnnotation = "symbol",
@@ -4975,30 +4786,6 @@ dmr12_chromHmmGmNhlf@dp@pars$fill <- recode(dmr12_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr12_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr2", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = 53900000,
-                                to = dmr12_to,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-
-dmr12_chromHmmk562@dp@pars$fill <- recode(dmr12_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr12_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr2", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -5025,7 +4812,6 @@ dmr12_chromHmmH1hesc@dp@pars$fill <- recode(dmr12_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr12_ht <- HighlightTrack(trackList = list(dmr12_refgenes, 
                                             dmr12_chromHmmGm12878, 
-                                            dmr12_chromHmmk562,
                                             dmr12_chromHmmH1hesc,
                                             dmr12_chromHmmGmNhlf,
                                             axTrack),
@@ -5033,10 +4819,15 @@ dmr12_ht <- HighlightTrack(trackList = list(dmr12_refgenes,
                            end = dmr12_to, 
                            chromosome = 7, fill = "lightgrey", col = "lightgrey")
 
+# check colours to be included
+unique(c(dmr12_chromHmmGm12878@dp@pars$fill, 
+         dmr12_chromHmmGmNhlf@dp@pars$fill, 
+         dmr12_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr12_gviz.png"),
+         "2023-01-04_dmr12_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr12_ht),  
            transcriptAnnotation = "symbol",
@@ -5184,30 +4975,6 @@ dmr13_chromHmmGmNhlf@dp@pars$fill <- recode(dmr13_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr13_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr19", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = dmr13_from,
-                                to = 58892500,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-
-dmr13_chromHmmk562@dp@pars$fill <- recode(dmr13_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr13_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr19", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -5234,7 +5001,6 @@ dmr13_chromHmmH1hesc@dp@pars$fill <- recode(dmr13_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr13_ht <- HighlightTrack(trackList = list(dmr13_refgenes, 
                                             dmr13_chromHmmGm12878, 
-                                            dmr13_chromHmmk562,
                                             dmr13_chromHmmH1hesc,
                                             dmr13_chromHmmGmNhlf,
                                             axTrack),
@@ -5242,10 +5008,14 @@ dmr13_ht <- HighlightTrack(trackList = list(dmr13_refgenes,
                            end = dmr13_to, 
                            chromosome = 19, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr13_chromHmmGm12878@dp@pars$fill, 
+         dmr13_chromHmmGmNhlf@dp@pars$fill, 
+         dmr13_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr13_gviz.png"),
+         "2023-01-04_dmr13_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr13_ht),  
            transcriptAnnotation = "symbol",
@@ -5393,30 +5163,6 @@ dmr14_chromHmmGmNhlf@dp@pars$fill <- recode(dmr14_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr14_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr11", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = 75133000,
-                                to = dmr14_to,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-
-dmr14_chromHmmk562@dp@pars$fill <- recode(dmr14_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr14_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr11", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -5443,7 +5189,6 @@ dmr14_chromHmmH1hesc@dp@pars$fill <- recode(dmr14_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr14_ht <- HighlightTrack(trackList = list(dmr14_refgenes, 
                                             dmr14_chromHmmGm12878, 
-                                            dmr14_chromHmmk562,
                                             dmr14_chromHmmH1hesc,
                                             dmr14_chromHmmGmNhlf,
                                             axTrack),
@@ -5451,10 +5196,14 @@ dmr14_ht <- HighlightTrack(trackList = list(dmr14_refgenes,
                            end = dmr14_to, 
                            chromosome = 11, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr14_chromHmmGm12878@dp@pars$fill, 
+         dmr14_chromHmmGmNhlf@dp@pars$fill, 
+         dmr14_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr14_gviz.png"),
+         "2023-01-04_dmr14_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr14_ht),  
            transcriptAnnotation = "symbol",
@@ -5602,29 +5351,6 @@ dmr15_chromHmmGmNhlf@dp@pars$fill <- recode(dmr15_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr15_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr1", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = 216700000,
-                                to = dmr15_to,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr15_chromHmmk562@dp@pars$fill <- recode(dmr15_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr15_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr1", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -5651,7 +5377,6 @@ dmr15_chromHmmH1hesc@dp@pars$fill <- recode(dmr15_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr15_ht <- HighlightTrack(trackList = list(dmr15_refgenes, 
                                             dmr15_chromHmmGm12878, 
-                                            dmr15_chromHmmk562,
                                             dmr15_chromHmmH1hesc,
                                             dmr15_chromHmmGmNhlf,
                                             axTrack),
@@ -5659,10 +5384,14 @@ dmr15_ht <- HighlightTrack(trackList = list(dmr15_refgenes,
                            end = dmr15_to, 
                            chromosome = 1, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr15_chromHmmGm12878@dp@pars$fill, 
+         dmr15_chromHmmGmNhlf@dp@pars$fill, 
+         dmr15_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr15_gviz.png"),
+         "2023-01-04_dmr15_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr15_ht),  
            transcriptAnnotation = "symbol",
@@ -5810,29 +5539,6 @@ dmr16_chromHmmGmNhlf@dp@pars$fill <- recode(dmr16_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr16_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr4", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = 3320000,
-                                to =   3434900,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr16_chromHmmk562@dp@pars$fill <- recode(dmr16_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr16_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr4", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -5859,7 +5565,6 @@ dmr16_chromHmmH1hesc@dp@pars$fill <- recode(dmr16_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr16_ht <- HighlightTrack(trackList = list(dmr16_refgenes, 
                                             dmr16_chromHmmGm12878, 
-                                            dmr16_chromHmmk562,
                                             dmr16_chromHmmH1hesc,
                                             dmr16_chromHmmGmNhlf,
                                             axTrack),
@@ -5867,10 +5572,15 @@ dmr16_ht <- HighlightTrack(trackList = list(dmr16_refgenes,
                            end = dmr16_to, 
                            chromosome = 4, fill = "lightgrey", col = "lightgrey")
 
+
+unique(c(dmr16_chromHmmGm12878@dp@pars$fill, 
+         dmr16_chromHmmGmNhlf@dp@pars$fill, 
+         dmr16_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr16_gviz.png"),
+         "2023-01-04_dmr16_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr16_ht),  
            transcriptAnnotation = "symbol",
@@ -5959,14 +5669,14 @@ dmr18_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr12",
                             transcript = "name", strand = "strand", 
                             fill = "#254A90", name = "UCSC refGene")
 
-# add names
-dmr18_ranges <- ranges(dmr18_refgenes)
-
-# gene refseq gene symbiks abd add to annotation 
-mcols(dmr18_ranges)$symbol <- mapIds(org.Hs.eg.db, 
-                                     gsub("\\.[1-9]$", "", mcols(dmr18_ranges)$symbol), 
-                                     "SYMBOL","REFSEQ")
-ranges(dmr18_refgenes) <- dmr18_ranges
+# # add names
+# dmr18_ranges <- ranges(dmr18_refgenes)
+# 
+# # gene refseq gene symbiks abd add to annotation 
+# mcols(dmr18_ranges)$symbol <- mapIds(org.Hs.eg.db, 
+#                                      gsub("\\.[1-9]$", "", mcols(dmr18_ranges)$symbol), 
+#                                      "SYMBOL","REFSEQ")
+# ranges(dmr18_refgenes) <- dmr18_ranges
 
 # get regulatory info from ucsc
 dmr18_chromHmmGm12878 <- UcscTrack(genome = "hg19", chromosome = "chr12", 
@@ -6017,29 +5727,6 @@ dmr18_chromHmmGmNhlf@dp@pars$fill <- recode(dmr18_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr18_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr12", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = 113775000,
-                                to =   113795000,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr18_chromHmmk562@dp@pars$fill <- recode(dmr18_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr18_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr12", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -6066,7 +5753,6 @@ dmr18_chromHmmH1hesc@dp@pars$fill <- recode(dmr18_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr18_ht <- HighlightTrack(trackList = list(dmr18_refgenes, 
                                             dmr18_chromHmmGm12878, 
-                                            dmr18_chromHmmk562,
                                             dmr18_chromHmmH1hesc,
                                             dmr18_chromHmmGmNhlf,
                                             axTrack),
@@ -6074,10 +5760,14 @@ dmr18_ht <- HighlightTrack(trackList = list(dmr18_refgenes,
                            end = dmr18_to, 
                            chromosome = 12, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr18_chromHmmGm12878@dp@pars$fill, 
+         dmr18_chromHmmGmNhlf@dp@pars$fill, 
+         dmr18_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr18_gviz.png"),
+         "2023-01-04_dmr18_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr18_ht),  
            transcriptAnnotation = "symbol",
@@ -6168,13 +5858,13 @@ dmr19_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr6",
                             fill = "#254A90", name = "UCSC refGene")
 
 # add names
-dmr19_ranges <- ranges(dmr19_refgenes)
-
-# gene refseq gene symbiks abd add to annotation 
-mcols(dmr19_ranges)$symbol <- mapIds(org.Hs.eg.db, 
-                                     gsub("\\.[1-9]$", "", mcols(dmr19_ranges)$symbol), 
-                                     "SYMBOL","REFSEQ")
-ranges(dmr19_refgenes) <- dmr19_ranges
+# dmr19_ranges <- ranges(dmr19_refgenes)
+# 
+# # gene refseq gene symbiks abd add to annotation 
+# mcols(dmr19_ranges)$symbol <- mapIds(org.Hs.eg.db, 
+#                                      gsub("\\.[1-9]$", "", mcols(dmr19_ranges)$symbol), 
+#                                      "SYMBOL","REFSEQ")
+# ranges(dmr19_refgenes) <- dmr19_ranges
 
 # get regulatory info from ucsc
 dmr19_chromHmmGm12878 <- UcscTrack(genome = "hg19", chromosome = "chr6", 
@@ -6225,29 +5915,6 @@ dmr19_chromHmmGmNhlf@dp@pars$fill <- recode(dmr19_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr19_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr6", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = dmr19_from,
-                                to = dmr19_to,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr19_chromHmmk562@dp@pars$fill <- recode(dmr19_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr19_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr6", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -6274,7 +5941,6 @@ dmr19_chromHmmH1hesc@dp@pars$fill <- recode(dmr19_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr19_ht <- HighlightTrack(trackList = list(dmr19_refgenes, 
                                             dmr19_chromHmmGm12878, 
-                                            dmr19_chromHmmk562,
                                             dmr19_chromHmmH1hesc,
                                             dmr19_chromHmmGmNhlf,
                                             axTrack),
@@ -6282,10 +5948,14 @@ dmr19_ht <- HighlightTrack(trackList = list(dmr19_refgenes,
                            end = dmr19_to, 
                            chromosome = 6, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr19_chromHmmGm12878@dp@pars$fill, 
+         dmr19_chromHmmGmNhlf@dp@pars$fill, 
+         dmr19_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr19_gviz.png"),
+         "2023-01-04_dmr19_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr19_ht),  
            transcriptAnnotation = "symbol",
@@ -6376,14 +6046,14 @@ dmr20_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr15",
                             transcript = "name", strand = "strand", 
                             fill = "#254A90", name = "UCSC refGene")
 
-# add names
-dmr20_ranges <- ranges(dmr20_refgenes)
-
-# gene refseq gene symbiks abd add to annotation 
-mcols(dmr20_ranges)$symbol <- mapIds(org.Hs.eg.db, 
-                                     gsub("\\.[1-9]$", "", mcols(dmr20_ranges)$symbol), 
-                                     "SYMBOL","REFSEQ")
-ranges(dmr20_refgenes) <- dmr20_ranges
+# # add names
+# dmr20_ranges <- ranges(dmr20_refgenes)
+# 
+# # gene refseq gene symbiks abd add to annotation 
+# mcols(dmr20_ranges)$symbol <- mapIds(org.Hs.eg.db, 
+#                                      gsub("\\.[1-9]$", "", mcols(dmr20_ranges)$symbol), 
+#                                      "SYMBOL","REFSEQ")
+# ranges(dmr20_refgenes) <- dmr20_ranges
 
 # get regulatory info from ucsc
 dmr20_chromHmmGm12878 <- UcscTrack(genome = "hg19", chromosome = "chr15", 
@@ -6434,29 +6104,6 @@ dmr20_chromHmmGmNhlf@dp@pars$fill <- recode(dmr20_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr20_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr15", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = dmr20_from,
-                                to = 93743073,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr20_chromHmmk562@dp@pars$fill <- recode(dmr20_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr20_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr15", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -6484,18 +6131,21 @@ dmr20_chromHmmH1hesc@dp@pars$fill <- recode(dmr20_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr20_ht <- HighlightTrack(trackList = list(dmr20_refgenes, 
                                             dmr20_chromHmmGm12878, 
-                                            dmr20_chromHmmk562,
-                                            dmr20_chromHmmH1hesc,
+                                             dmr20_chromHmmH1hesc,
                                             dmr20_chromHmmGmNhlf,
                                             axTrack),
                            start = dmr20_from,
                            end = dmr20_to, 
                            chromosome = 15, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr20_chromHmmGm12878@dp@pars$fill, 
+         dmr20_chromHmmGmNhlf@dp@pars$fill, 
+         dmr20_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr20_gviz.png"),
+         "2023-01-04_dmr20_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr20_ht),  
            transcriptAnnotation = "symbol",
@@ -6587,13 +6237,13 @@ dmr21_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr6",
                             fill = "#254A90", name = "UCSC refGene")
 
 # add names
-dmr21_ranges <- ranges(dmr21_refgenes)
-
-# gene refseq gene symbiks abd add to annotation 
-mcols(dmr21_ranges)$symbol <- mapIds(org.Hs.eg.db, 
-                                     gsub("\\.[1-9]$", "", mcols(dmr21_ranges)$symbol), 
-                                     "SYMBOL","REFSEQ")
-ranges(dmr21_refgenes) <- dmr21_ranges
+# dmr21_ranges <- ranges(dmr21_refgenes)
+# 
+# # gene refseq gene symbiks abd add to annotation 
+# mcols(dmr21_ranges)$symbol <- mapIds(org.Hs.eg.db, 
+#                                      gsub("\\.[1-9]$", "", mcols(dmr21_ranges)$symbol), 
+#                                      "SYMBOL","REFSEQ")
+# ranges(dmr21_refgenes) <- dmr21_ranges
 
 # get regulatory info from ucsc
 dmr21_chromHmmGm12878 <- UcscTrack(genome = "hg19", chromosome = "chr6", 
@@ -6644,29 +6294,6 @@ dmr21_chromHmmGmNhlf@dp@pars$fill <- recode(dmr21_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr21_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr6", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = 164390000,
-                                to = 164490000,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr21_chromHmmk562@dp@pars$fill <- recode(dmr21_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr21_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr6", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -6694,7 +6321,6 @@ dmr21_chromHmmH1hesc@dp@pars$fill <- recode(dmr21_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr21_ht <- HighlightTrack(trackList = list(dmr21_refgenes, 
                                             dmr21_chromHmmGm12878, 
-                                            dmr21_chromHmmk562,
                                             dmr21_chromHmmH1hesc,
                                             dmr21_chromHmmGmNhlf,
                                             axTrack),
@@ -6702,10 +6328,15 @@ dmr21_ht <- HighlightTrack(trackList = list(dmr21_refgenes,
                            end = dmr21_to, 
                            chromosome = 6, fill = "lightgrey", col = "lightgrey")
 
+
+unique(c(dmr21_chromHmmGm12878@dp@pars$fill, 
+         dmr21_chromHmmGmNhlf@dp@pars$fill, 
+         dmr21_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr21_gviz.png"),
+         "2023-01-04_dmr21_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr21_ht),  
            transcriptAnnotation = "symbol",
@@ -6789,7 +6420,7 @@ dmr23_to <- combp_anno_df_es_sub_escutoff %>%
 dmr23_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr17", 
                             track = "NCBI RefSeq", 
                             table = "refGene",
-                            from = dmr23_from, to = dmr23_to,
+                            from = dmr23_from, to = 7491000,
                             trackType = "GeneRegionTrack", 
                             rstarts = "exonStarts", rends = "exonEnds", 
                             gene = "name", symbol = "name", 
@@ -6811,7 +6442,7 @@ dmr23_chromHmmGm12878 <- UcscTrack(genome = "hg19", chromosome = "chr17",
                                    table = "wgEncodeBroadHmmGm12878HMM",
                                    trackType = "AnnotationTrack", 
                                    from = dmr23_from,
-                                   to =   dmr23_to,
+                                   to =   7491000,
                                    start = "chromStart", end = "chromEnd", 
                                    id = "name", feature = "score", shape = "box", 
                                    stacking = "dense", fill = "itemRgb",
@@ -6835,7 +6466,7 @@ dmr23_chromHmmGmNhlf <- UcscTrack(genome = "hg19", chromosome = "chr17",
                                   table = "wgEncodeBroadHmmNhlfHMM",
                                   trackType = "AnnotationTrack",
                                   from = 7485500,
-                                  to = dmr23_to,
+                                  to = 7491000,
                                   start = "chromStart", end = "chromEnd",
                                   id = "name", feature = "score", shape = "box",
                                   stacking = "dense", fill = "itemRgb",
@@ -6854,35 +6485,12 @@ dmr23_chromHmmGmNhlf@dp@pars$fill <- recode(dmr23_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr23_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr17", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = dmr23_from,
-                                to = dmr23_to,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr23_chromHmmk562@dp@pars$fill <- recode(dmr23_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr23_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr17", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
                                   trackType = "AnnotationTrack", 
                                   from = 7485500,
-                                  to =   dmr23_to,
+                                  to =   7491000,
                                   start = "chromStart", end = "chromEnd", 
                                   id = "name", feature = "score", shape = "box", 
                                   stacking = "dense", fill = "itemRgb",
@@ -6903,7 +6511,6 @@ dmr23_chromHmmH1hesc@dp@pars$fill <- recode(dmr23_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr23_ht <- HighlightTrack(trackList = list(dmr23_refgenes, 
                                             dmr23_chromHmmGm12878, 
-                                            dmr23_chromHmmk562,
                                             dmr23_chromHmmH1hesc,
                                             dmr23_chromHmmGmNhlf,
                                             axTrack),
@@ -6911,10 +6518,14 @@ dmr23_ht <- HighlightTrack(trackList = list(dmr23_refgenes,
                            end = dmr23_to, 
                            chromosome = 17, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr23_chromHmmGm12878@dp@pars$fill, 
+         dmr23_chromHmmGmNhlf@dp@pars$fill, 
+         dmr23_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr23_gviz.png"),
+         "2023-01-04_dmr23_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr23_ht),  
            transcriptAnnotation = "symbol",
@@ -6998,7 +6609,7 @@ dmr24_to <- combp_anno_df_es_sub_escutoff %>%
 dmr24_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr7", 
                             track = "NCBI RefSeq", 
                             table = "refGene",
-                            from = dmr24_from, to = dmr24_to,
+                            from = 27220700, to = dmr24_to,
                             trackType = "GeneRegionTrack", 
                             rstarts = "exonStarts", rends = "exonEnds", 
                             gene = "name", symbol = "name", 
@@ -7019,7 +6630,7 @@ dmr24_chromHmmGm12878 <- UcscTrack(genome = "hg19", chromosome = "chr7",
                                    track = "Broad ChromHMM",
                                    table = "wgEncodeBroadHmmGm12878HMM",
                                    trackType = "AnnotationTrack", 
-                                   from = dmr24_from,
+                                   from = 27220700,
                                    to =   dmr24_to,
                                    start = "chromStart", end = "chromEnd", 
                                    id = "name", feature = "score", shape = "box", 
@@ -7043,7 +6654,7 @@ dmr24_chromHmmGmNhlf <- UcscTrack(genome = "hg19", chromosome = "chr7",
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmNhlfHMM",
                                   trackType = "AnnotationTrack",
-                                  from = 27225000,
+                                  from = 27220700,
                                   to = 27235865,
                                   start = "chromStart", end = "chromEnd",
                                   id = "name", feature = "score", shape = "box",
@@ -7063,34 +6674,11 @@ dmr24_chromHmmGmNhlf@dp@pars$fill <- recode(dmr24_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr24_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr7", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = dmr24_from,
-                                to = dmr24_to,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr24_chromHmmk562@dp@pars$fill <- recode(dmr24_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr24_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr7", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
                                   trackType = "AnnotationTrack", 
-                                  from = dmr24_from,
+                                  from = 27220700,
                                   to =   27235865,
                                   start = "chromStart", end = "chromEnd", 
                                   id = "name", feature = "score", shape = "box", 
@@ -7112,7 +6700,6 @@ dmr24_chromHmmH1hesc@dp@pars$fill <- recode(dmr24_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr24_ht <- HighlightTrack(trackList = list(dmr24_refgenes, 
                                             dmr24_chromHmmGm12878, 
-                                            dmr24_chromHmmk562,
                                             dmr24_chromHmmH1hesc,
                                             dmr24_chromHmmGmNhlf,
                                             axTrack),
@@ -7120,10 +6707,14 @@ dmr24_ht <- HighlightTrack(trackList = list(dmr24_refgenes,
                            end = dmr24_to, 
                            chromosome = 7, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr24_chromHmmGm12878@dp@pars$fill, 
+         dmr24_chromHmmGmNhlf@dp@pars$fill, 
+         dmr24_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr24_gviz.png"),
+         "2023-01-04_dmr24_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr24_ht),  
            transcriptAnnotation = "symbol",
@@ -7214,13 +6805,13 @@ dmr25_refgenes <- UcscTrack(genome = "hg19", chromosome = "chr5",
                             fill = "#254A90", name = "UCSC refGene")
 
 # add names
-dmr25_ranges <- ranges(dmr25_refgenes)
-
-# gene refseq gene symbiks abd add to annotation 
-mcols(dmr25_ranges)$symbol <- mapIds(org.Hs.eg.db, 
-                                     gsub("\\.[1-9]$", "", mcols(dmr25_ranges)$symbol), 
-                                     "SYMBOL","REFSEQ")
-ranges(dmr25_refgenes) <- dmr25_ranges
+# dmr25_ranges <- ranges(dmr25_refgenes)
+# 
+# # gene refseq gene symbiks abd add to annotation 
+# mcols(dmr25_ranges)$symbol <- mapIds(org.Hs.eg.db, 
+#                                      gsub("\\.[1-9]$", "", mcols(dmr25_ranges)$symbol), 
+#                                      "SYMBOL","REFSEQ")
+# ranges(dmr25_refgenes) <- dmr25_ranges
 
 # get regulatory info from ucsc
 dmr25_chromHmmGm12878 <- UcscTrack(genome = "hg19", chromosome = "chr5", 
@@ -7271,29 +6862,6 @@ dmr25_chromHmmGmNhlf@dp@pars$fill <- recode(dmr25_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr25_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr5", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = dmr25_from,
-                                to = dmr25_to,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr25_chromHmmk562@dp@pars$fill <- recode(dmr25_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr25_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr5", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -7320,7 +6888,6 @@ dmr25_chromHmmH1hesc@dp@pars$fill <- recode(dmr25_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr25_ht <- HighlightTrack(trackList = list(dmr25_refgenes, 
                                             dmr25_chromHmmGm12878, 
-                                            dmr25_chromHmmk562,
                                             dmr25_chromHmmH1hesc,
                                             dmr25_chromHmmGmNhlf,
                                             axTrack),
@@ -7328,10 +6895,14 @@ dmr25_ht <- HighlightTrack(trackList = list(dmr25_refgenes,
                            end = dmr25_to, 
                            chromosome = 5, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr25_chromHmmGm12878@dp@pars$fill, 
+         dmr25_chromHmmGmNhlf@dp@pars$fill, 
+         dmr25_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr25_gviz.png"),
+         "2023-01-04_dmr25_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr25_ht),  
            transcriptAnnotation = "symbol",
@@ -7480,29 +7051,6 @@ dmr27_chromHmmGmNhlf@dp@pars$fill <- recode(dmr27_chromHmmGmNhlf@dp@pars$fill,
                                             "207,11,198" = "#cf0bc6",
                                             "10,190,254"  = "#0abefe")
 
-dmr27_chromHmmk562 <- UcscTrack(genome = "hg19", chromosome = "chr5", 
-                                track = "Broad ChromHMM",
-                                table = "wgEncodeBroadHmmK562HMM",
-                                trackType = "AnnotationTrack", 
-                                from = 126380000,
-                                to = 126410061,
-                                start = "chromStart", end = "chromEnd", 
-                                id = "name", feature = "score", shape = "box", 
-                                stacking = "dense", fill = "itemRgb",
-                                name = "K562")
-
-dmr27_chromHmmk562@dp@pars$fill <- recode(dmr27_chromHmmk562@dp@pars$fill,
-                                          "127,127,127" = "#7f7f7f",
-                                          "245,245,245" = "#f5f5f5",
-                                          "10,190,254"  = "#0abefe",
-                                          "250,202,0" = "#faca00",
-                                          "0,176,80" = "#00b050",
-                                          "153,255,102" = "#99ff66",
-                                          "255,252,4" = "#fffc04",
-                                          "207,11,198" = "#cf0bc6",
-                                          "255,0,0" = "#ff0000",
-                                          "255,105,105" = "#ff6969")
-
 dmr27_chromHmmH1hesc <- UcscTrack(genome = "hg19", chromosome = "chr5", 
                                   track = "Broad ChromHMM",
                                   table = "wgEncodeBroadHmmH1hescHMM",
@@ -7529,7 +7077,6 @@ dmr27_chromHmmH1hesc@dp@pars$fill <- recode(dmr27_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr27_ht <- HighlightTrack(trackList = list(dmr27_refgenes, 
                                             dmr27_chromHmmGm12878, 
-                                            dmr27_chromHmmk562,
                                             dmr27_chromHmmH1hesc,
                                             dmr27_chromHmmGmNhlf,
                                             axTrack),
@@ -7537,10 +7084,14 @@ dmr27_ht <- HighlightTrack(trackList = list(dmr27_refgenes,
                            end = dmr27_to, 
                            chromosome = 5, fill = "lightgrey", col = "lightgrey")
 
+unique(c(dmr27_chromHmmGm12878@dp@pars$fill, 
+         dmr27_chromHmmGmNhlf@dp@pars$fill, 
+         dmr27_chromHmmH1hesc@dp@pars$fill))
+
 png(here("figures",
          "linear_regression",
          "prenatal",
-         "2023-01-03_dmr27_gviz.png"),
+         "2023-01-04_dmr27_gviz.png"),
     height = 6, width = 10.5, units = "cm", res = 300)
 plotTracks(list(dmr27_ht),  
            transcriptAnnotation = "symbol",
