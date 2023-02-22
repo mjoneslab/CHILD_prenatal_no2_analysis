@@ -1,0 +1,1 @@
+The "scripts" folder contains functions that are called throughout analysis. The "scripts" folder also contains a subfolder "2022-09-26_pipeline" which contains all scrips necessary to run the analysis of persistence DNAm changes associated with prenatal NO2 exposure. 
