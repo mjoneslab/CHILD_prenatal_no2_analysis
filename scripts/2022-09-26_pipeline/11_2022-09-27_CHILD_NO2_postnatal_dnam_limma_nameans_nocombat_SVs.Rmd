@@ -2515,43 +2515,55 @@ quantile(covariates_geno_ctpcs_tech_cc$no2_y1_2019v)
 
 
 
-Boxplots of NO2, PM2.5
+Boxplots of NO2
 ```{r airpollution_boxplots}
 
-# prenatal no2
-ggplot(covariates_geno_ctpcs_tech_cc, aes(y=no2_y1_entire, x=studycentre, fill=studycentre)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(height=0, width=0.25, alpha=0.8) +
-  theme_bw() +
-  scale_fill_manual(values=c("#254A90", "#508FC2", "#92C5EB", "white")) +
-  labs(x="Study Centre", y=bquote("Year one" ~NO[2]~ "(ppb)")) +
-  theme(panel.grid = element_blank(),
-        legend.position = "none",
-        axis.text = element_text(size=14),
-        axis.title = element_text(size=16))
 
 # year one no2
-ggplot(covariates_geno_ctpc_tech_cc_y1_sub, aes(y=no2_y1_entire, x=studycentre,fill=studycentre)) +
+studysite_yearone_no2_postnatal_specific <- ggplot(covariates_geno_ctpcs_tech_cc, 
+       aes(y=no2_y1_2019v, x=studycentre,fill=studycentre)) +
   geom_boxplot(outlier.shape = NA) +
-  geom_jitter(height=0, width=0.25, alpha=0.8) +
+  geom_jitter(height=0, width=0.2, alpha=0.6) +
+  theme_bw() +
   scale_fill_manual(values=c("#254A90", "#508FC2", "#92C5EB", "white")) +
   labs(x="Study Centre", y=bquote("Year one" ~NO[2]~ "(ppb)")) +
-  theme_bw() +
   theme(panel.grid = element_blank(),
         legend.position = "none",
-        axis.text = element_text(size=14),
-        axis.title = element_text(size=16))
+        axis.text = element_text(size=9),
+        axis.title.x = element_blank(),
+        axis.title = element_text(size=11)) +
+    geom_signif(
+    comparisons = list(c("Winnipeg", "Vancouver"),
+                       c("Vancouver", "Toronto"),
+                       c("Edmonton", "Toronto"),
+                       c("Winnipeg", "Toronto"),
+                       c("Winnipeg", "Edmonton")),
+    step_increase = 0.1,
+    annotations = c("2.8e-11", 
+                    "3.1e-07", 
+                    "7.8e-04",
+                    "7.7e-15",
+                    "2.3e-14"), 
+    margin_top = 0, textsize = 3,
+  ) + ylim(0, 40)
 
-# Pm2.5 B
-ggplot(covariates_geno_ctpc_tech, aes(y=PM25DALbYY_01, x=studycentre, fill=studycentre)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(height=0, width=0.25, alpha=0.8) +
-  scale_fill_manual(values=c("#254A90", "#508FC2", "#92C5EB", "white")) +
-  labs(x="Study Centre", y=bquote(~PM[2.5]~ "(ppb)")) +
-  theme_bw() +
-  theme(panel.grid = element_blank(),
-        legend.position = "none",
-        axis.text = element_text(size=14),
-        axis.title = element_text(size=16))
+anova(lm(no2_y1_2019v ~ studycentre, data = covariates_geno_ctpcs_tech_cc))
+TukeyHSD(aov(lm(no2_y1_2019v ~ studycentre, data = covariates_geno_ctpcs_tech_cc)))
+
+covariates_geno_ctpcs_tech_cc$no2_y1_2019v %>% mean()
+covariates_geno_ctpcs_tech_cc$no2_y1_2019v %>% sd()
+
+covariates_geno_ctpcs_tech_cc %>%
+  group_by(studycentre) %>%
+  summarise(mean(no2_y1_2019v),
+            sd(no2_y1_2019v))
+
+
+ggsave(plot = studysite_yearone_no2_postnatal_specific,
+       filename = here("figures",
+                       "linear_regression",
+                       "postnatal",
+                       "2023-02-27_studysite_yearone_no2_postnatal_specific.png"),
+       height = 9, width = 11, units="cm")
 ```
 

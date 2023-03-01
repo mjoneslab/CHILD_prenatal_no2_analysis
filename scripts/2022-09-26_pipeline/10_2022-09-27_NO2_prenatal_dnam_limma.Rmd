@@ -3441,7 +3441,7 @@ dmr5_chromHmmGmNhlf <- UcscTrack(genome = "hg19", chromosome = "chr5",
                                  table = "wgEncodeBroadHmmNhlfHMM",
                                  trackType = "AnnotationTrack",
                                  from = 150290000,
-                          to = 150360000, 
+                                 to = 150360000, 
                                  start = "chromStart", end = "chromEnd",
                                  id = "name", feature = "score", shape = "box",
                                  stacking = "dense", fill = "itemRgb",
@@ -6061,7 +6061,7 @@ dmr20_chromHmmGm12878 <- UcscTrack(genome = "hg19", chromosome = "chr15",
                                    table = "wgEncodeBroadHmmGm12878HMM",
                                    trackType = "AnnotationTrack", 
                                    from = 93650000,
-                                  to = 93743073,
+                                   to = 93743073,
                                    start = "chromStart", end = "chromEnd", 
                                    id = "name", feature = "score", shape = "box", 
                                    stacking = "dense", fill = "itemRgb",
@@ -6131,7 +6131,7 @@ dmr20_chromHmmH1hesc@dp@pars$fill <- recode(dmr20_chromHmmH1hesc@dp@pars$fill,
 # highlight track for DMR
 dmr20_ht <- HighlightTrack(trackList = list(dmr20_refgenes, 
                                             dmr20_chromHmmGm12878, 
-                                             dmr20_chromHmmH1hesc,
+                                            dmr20_chromHmmH1hesc,
                                             dmr20_chromHmmGmNhlf,
                                             axTrack),
                            start = dmr20_from,
@@ -9162,100 +9162,137 @@ quantile(covariates_geno_ctpc_tech_cc_y1_sub_pbmc$no2_prenatal_avg_2019v)
 ```{r airpollution_boxplots}
 
 # prenatal no2
-ggplot(covariates_geno_ctpc_tech_cc, aes(y=no2_preg_entire, x=studycentre, fill=studycentre)) +
+studysite_prenatal_no2 <- ggplot(covariates_geno_ctpc_tech_cc, aes(y=no2_prenatal_avg_2019v, 
+                                                                   x=studycentre, 
+                                                                   fill=studycentre)) +
   geom_boxplot(outlier.shape = NA) +
-  geom_jitter(height=0, width=0.25, alpha=0.8) +
+  geom_jitter(height=0, width=0.2, alpha=0.6) +
   theme_bw() +
   scale_fill_manual(values=c("#254A90", "#508FC2", "#92C5EB", "white")) +
   labs(x="Study Centre", y=bquote("Prenatal" ~NO[2]~ "(ppb)")) +
   theme(panel.grid = element_blank(),
         legend.position = "none",
-        axis.text = element_text(size=14),
-        axis.title = element_text(size=16))
+        axis.text = element_text(size=9),
+        axis.title.x = element_blank(),
+        axis.title = element_text(size=11)) +
+  geom_signif(
+    comparisons = list(c("Winnipeg", "Vancouver"),
+                       c("Vancouver", "Toronto"),
+                       c("Edmonton", "Toronto"),
+                       c("Winnipeg", "Toronto"),
+                       c("Winnipeg", "Edmonton")),
+    step_increase = 0.1,
+    annotations = c("8.4e-12", 
+                    "1.5e-06", 
+                    "6.7e-04",
+                    "7.6e-15",
+                    "3.3e-14"), 
+    margin_top = 0, textsize = 3,
+  ) + ylim(0, 40)
 
-# year one no2
-ggplot(covariates_geno_ctpc_tech_cc_y1_sub, aes(y=no2_y1_entire, x=studycentre,fill=studycentre)) +
+anova(lm(no2_prenatal_avg_2019v ~ studycentre, data = covariates_geno_ctpc_tech_cc))
+TukeyHSD(aov(lm(no2_prenatal_avg_2019v ~ studycentre, data = covariates_geno_ctpc_tech_cc)))
+
+ggsave(plot = studysite_prenatal_no2,
+       filename = here("figures",
+                       "linear_regression",
+                       "prenatal",
+                       "2023-02-27_studysite_vs_prenatalno2.png"),
+       height = 9, width = 11, units="cm")
+
+covariates_geno_ctpc_tech_cc$no2_prenatal_avg_2019v %>% mean()
+covariates_geno_ctpc_tech_cc$no2_prenatal_avg_2019v %>% sd()
+
+covariates_geno_ctpc_tech_cc %>%
+  group_by(studycentre) %>%
+  summarise(mean(no2_prenatal_avg_2019v),
+            sd(no2_prenatal_avg_2019v))
+
+# prenatal no2 persistence
+studysite_prenatal_no2_persistence <- ggplot(covariates_geno_ctpc_tech_cc_y1_sub, 
+                                             aes(y=no2_prenatal_avg_2019v, x=studycentre,fill=studycentre)) +
   geom_boxplot(outlier.shape = NA) +
-  geom_jitter(height=0, width=0.25, alpha=0.8) +
-  scale_fill_manual(values=c("#254A90", "#508FC2", "#92C5EB", "white")) +
-  labs(x="Study Centre", y=bquote("Year one" ~NO[2]~ "(ppb)")) +
+  geom_jitter(height=0, width=0.2, alpha=0.6) +
   theme_bw() +
+  scale_fill_manual(values=c("#254A90", "#508FC2", "#92C5EB", "white")) +
+  labs(x="Study Centre", y=bquote("Prenatal" ~NO[2]~ "(ppb)")) +
   theme(panel.grid = element_blank(),
         legend.position = "none",
-        axis.text = element_text(size=14),
-        axis.title = element_text(size=16))
+        axis.text = element_text(size=9),
+        axis.title.x = element_blank(),
+        axis.title = element_text(size=11)) +
+  geom_signif(
+    comparisons = list(c("Winnipeg", "Vancouver"),
+                       c("Vancouver", "Toronto"),
+                       c("Edmonton", "Toronto"),
+                       c("Winnipeg", "Toronto"),
+                       c("Winnipeg", "Edmonton")),
+    step_increase = 0.1,
+    annotations = c("1.9e-11", 
+                    "4.0e-07", 
+                    "5.0e-04",
+                    "2.4e-14",
+                    "4.5e-14"), 
+    margin_top = 0, textsize = 3,
+  ) + ylim(0, 40)
 
-# Pm2.5 B
-ggplot(covariates_geno_ctpc_tech, aes(y=PM25DALbYY_01, x=studycentre, fill=studycentre)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(height=0, width=0.25, alpha=0.8) +
-  scale_fill_manual(values=c("#254A90", "#508FC2", "#92C5EB", "white")) +
-  labs(x="Study Centre", y=bquote(~PM[2.5]~ "(ppb)")) +
+anova(lm(no2_prenatal_avg_2019v ~ studycentre, data = covariates_geno_ctpc_tech_cc_y1_sub))
+TukeyHSD(aov(lm(no2_prenatal_avg_2019v ~ studycentre, data = covariates_geno_ctpc_tech_cc_y1_sub)))
+
+ggsave(plot = studysite_prenatal_no2_persistence,
+       filename = here("figures",
+                       "linear_regression",
+                       "prenatal",
+                       "2023-02-27_studysite_prenatal_no2_persistence.png"),
+       height = 9, width = 11, units="cm")
+
+covariates_geno_ctpc_tech_cc_y1_sub$no2_prenatal_avg_2019v %>% mean()
+covariates_geno_ctpc_tech_cc_y1_sub$no2_prenatal_avg_2019v %>% sd()
+
+covariates_geno_ctpc_tech_cc_y1_sub %>%
+  group_by(studycentre) %>%
+  summarise(mean(no2_prenatal_avg_2019v),
+            sd(no2_prenatal_avg_2019v))
+
+
+# compare prenatal vs year one no2 exposure 
+t.test(covariates_geno_ctpc_tech_cc %>% 
+         dplyr::select(no2_prenatal_tm1_2019v, no2_y1t1_2019v, sample_id) %>% 
+         na.omit() %>%
+         pull(no2_prenatal_tm1_2019v),
+       covariates_geno_ctpc_tech_cc %>% 
+         dplyr::select(no2_prenatal_tm1_2019v, no2_y1t1_2019v, sample_id) %>% 
+         na.omit() %>%
+         pull(no2_y1t1_2019v), paired = T)
+
+prenatal_vs_yearone_no2 <- ggplot(covariates_geno_ctpc_tech_cc %>% 
+         dplyr::select(no2_prenatal_tm1_2019v, no2_y1t1_2019v, sample_id, studycentre) %>% 
+         na.omit() %>% 
+         mutate(higher = ifelse(no2_y1t1_2019v > no2_prenatal_tm1_2019v, 1, 0)) %>%
+         pivot_longer(-c(sample_id, higher, studycentre)),
+       aes(x=name, y = value, color = as.factor(higher))) +
+  geom_point(alpha = 0.5) +
+  geom_line(aes(group = sample_id), alpha = 0.8) +
+  scale_color_manual(values = c("#254A90", "red"), labels = c("Decreased", "Increased"), 
+                     name = bquote("Δ" ~NO[2]~ "exposure")) + 
+  scale_x_discrete(labels = c("Prenatal", "Year one")) +
+  labs(y=bquote( ~NO[2]~ "exposure (ppb)")) +
   theme_bw() +
-  theme(panel.grid = element_blank(),
-        legend.position = "none",
-        axis.text = element_text(size=14),
-        axis.title = element_text(size=16))
+  theme(panel.grid.major.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text = element_text(size = 9),
+        axis.title.y = element_text(size = 11)) +
+  geom_signif(
+    comparisons = list(c("no2_prenatal_tm1_2019v", "no2_y1t1_2019v")),
+    annotations = c("1.8e-05"), 
+    textsize = 3, color = "black", margin_top = 0.1
+  ) + ylim(0, 35)
+
+ggsave(plot = prenatal_vs_yearone_no2,
+       filename = here("figures",
+                       "linear_regression",
+                       "prenatal",
+                       "2023-02-28_prenatal_vs_yearone_no2_exp.png"),
+       height = 8, width = 12, units="cm")
+
 ```
-
-
-Prenatal air pollution exposure vs asthma in cord blood 
-```{r no2_vs_asthma_cordblood}
-wheeze_no2 <- covariates_geno_ctpc_tech_cc %>%
-  subset(!is.na(any_wheeze_y1)) %>%
-  select(any_wheeze_y1, prenatal_maternal_smoke,
-         no2_prenatal_avg_2019v, no2_y1_2019v,
-         sex, 
-         gestational_age, 
-         maternal_race,
-         maternal_education_length,
-         genotyping.PC1, genotyping.PC2, genotyping.PC3,
-         Comp.1, Comp.2, Comp.3, Comp.4)
-
-test <- glm(any_wheeze_y1 ~ no2_prenatal_avg_2019v + sex + 
-              gestational_age + prenatal_maternal_smoke + maternal_education_length +
-              genotyping.PC1 + genotyping.PC2 + genotyping.PC3 + 
-              Comp.1 + Comp.2 + Comp.3 + Comp.4, 
-            data = wheeze_no2, family = "binomial")
-
-t.test(wheeze_no2$any_wheeze_y1, wheeze_no2$no2_prenatal_avg_2019v)
-
-ggplot(wheeze_no2, aes(x=as.factor(any_wheeze_y1), y = no2_prenatal_avg_2019v)) +
-  geom_boxplot() +
-  facet_grid(~sex)
-
-plot_summs(test, exp = 1)
-
-
-atopy_no2 <- covariates_geno_ctpc_tech_cc %>%
-  subset(!is.na(clinician_atopy_dx_y1)) %>%
-  select(clinician_atopy_dx_y1, prenatal_maternal_smoke,
-         no2_prenatal_avg_2019v, no2_y1_2019v,
-         sex, 
-         gestational_age, maternal_race,
-         maternal_education_length, 
-         genotyping.PC1, genotyping.PC2, genotyping.PC3,
-         Comp.1, Comp.2, Comp.3, Comp.4)
-
-test <- glm(clinician_atopy_dx_y1 ~ no2_prenatal_avg_2019v + sex + 
-              gestational_age + prenatal_maternal_smoke + maternal_education_length +
-              genotyping.PC1 + genotyping.PC2 + genotyping.PC3,
-            data = atopy_no2, family = "binomial")
-
-
-plot_summs(test, exp = 1)
-
-t.test(as.numeric(as.character(atopy_no2$clinician_atopy_dx_y1)), 
-       atopy_no2$no2_prenatal_avg_2019v)
-
-ggplot(atopy_no2, aes(x=as.factor(clinician_atopy_dx_y1), y = no2_prenatal_avg_2019v)) +
-  geom_boxplot() +
-  facet_grid(~sex)
-
-test <- merge(x=covariates_geno_ctpc_tech_cc, y=child_fscbc_ecc2_cb$prop, by.x = "cb_sample_name", by.y = "row.names", all.x=T)
-testlong <- test %>% 
-  select(sample_id, CD4T, NK, CD8T, Mono, Bcell, nRBC, any_wheeze_y1) %>%
-  pivot_longer(cols=-c(sample_id, any_wheeze_y1))
-```
-
-
