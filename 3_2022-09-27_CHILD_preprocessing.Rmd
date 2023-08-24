@@ -1,0 +1,586 @@
+---
+title: "CHILD data processing and normalization"
+author: "Samantha Lee"
+date: "2021-09-23"
+output: html_document
+---
+
+## Purpose
+
+This purpose of this script is to load in raw CHILD DNAm data and to conduct preprocessing, normalization, and quality control steps. 
+
+## Load all required libraries  
+
+Load libraries needed for CHILD data.  
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse) # dplyt
+library(minfi) # dnam data preprocessing
+library(wateRmelon) # bead counts
+library(sva) # pca
+library(ggpubr) #graphing
+library(reshape2) # wide to long
+library(RColorBrewer) # nice color palettes
+library(here) # dir calling
+```
+
+## Load DNAm data
+
+Read CHILD data in based on providedc sample sheet. This step will incorporate pData into the rgset. In the sample sheet, cord blood samples are coded as "C" and age one peripheral blood samples are coded as "P".  
+```{r import_data, message=FALSE, warning=FALSE}
+# read in sample sheet for child data
+sample_sheet <- read.metharray.sheet(base = here("input_data", "CHILD_raw_dnam_data"),
+                                     pattern = "Samplesheet_R5.csv",
+                                     recursive = FALSE, 
+                                     verbose = TRUE)
+
+# change column names to what minfi expects
+colnames(sample_sheet)[8] <- "Sentrix_ID"
+colnames(sample_sheet)[9] <- "Sentrix_Position"
+
+# one of the barcodes has a typo in sample sheet -> fix
+sample_sheet[sample_sheet$Sentrix_ID == 9343114974, "Sentrix_ID"] <- 9343114074
+
+# create a new column for basename - what read.metharray.exp looks for in targets is called
+sample_sheet$Basename <- paste(sample_sheet$Sentrix_ID, 
+                               sample_sheet$Sentrix_Position,
+                               sep = "_") 
+
+# add in sub directory
+sample_sheet$Basename <- paste(sample_sheet$Sentrix_ID, 
+                               sample_sheet$Basename,
+                               sep = "/") 
+
+# add in main directory
+sample_sheet$Basename <- paste(here("input_data","CHILD_raw_dnam_data"),
+                               sample_sheet$Basename,
+                               sep = "/") 
+
+# read in meth array data
+rgset <- read.metharray.exp(targets = sample_sheet, verbose=TRUE, extended = TRUE)
+```
+
+## Assess quality of bisulfite conversion 
+
+Examine plots of probe intensities.
+```{r bs_conversion_qc}
+# type I probes
+controlStripPlot(rgset, controls="BISULFITE CONVERSION I")
+
+# type II probes
+controlStripPlot(rgset, controls="BISULFITE CONVERSION II")
+```
+Nothing stands out as being too high or too low. 
+
+
+## Remove bad probes and/or bad samples
+
+Remove bad probes based on detectionP value. Probes with at least one badDetP will be removed.  
+```{r remove_bad_probes}
+# samples with a (relatively) high proportion of bad probes should be removed
+# filter out probes with a detection p-value > 0.01 (standard practice) 
+# this step requires an RGSet 
+badDetP <- detectionP(rgset)>0.01
+
+# visual how many bad probes per sample
+# first sum bad detP according to TRUE=1/FALSE=0 and put in data frame
+nbaddetP_colsums <- as.data.frame(colSums(badDetP)) 
+
+# add in sample_ID
+nbaddetP_colsums$sample_id <- rgset$SampleID
+
+# plot number of bad probes vs sample
+badprobeplot <- ggplot(nbaddetP_colsums, aes(x=sample_id, y=colSums(badDetP))) +
+  geom_col() +
+  theme_classic() +
+  labs(y="Number of failed probes") +
+  rotate_y_text()
+badprobeplot
+# one sample has a significantly higher number of bad probes
+
+# find sample with large number of bad probes
+nbaddetP_colsums$sample_id[nbaddetP_colsums$`colSums(badDetP)` == 
+                             max(nbaddetP_colsums$`colSums(badDetP)`)] # 50602_C
+
+# one sample (50602_C) has a higher number of failed probes than the rest
+# remove before normalization
+rgset_nobadsamp <- rgset[,!(rgset$SampleID=="50602_C")]
+
+# check sizes
+dim(rgset) # 622399    299
+dim(rgset_nobadsamp) # 622399    298
+
+# redo detP without bad sample
+badDetP <- detectionP(rgset_nobadsamp)>0.01
+
+# visual how many bad probes per sample
+# first sum bad detP according to TRUE=1/FALSE=0 and put in data frame
+nbaddetP_colsums <-as.data.frame(colSums(badDetP)) 
+
+# add in sample_ID
+nbaddetP_colsums$sample_id <-rgset_nobadsamp$SampleID
+
+# plot in ggplot
+badprobeplot2 <- ggplot(nbaddetP_colsums, aes(x=sample_id, y=colSums(badDetP))) +
+  geom_col() +
+  theme_classic() +
+  labs(y="Number of failed probes") +
+  rotate_x_text()
+badprobeplot2
+# this looks better now
+
+# visualize how many probes have 0,1,2, etc bad detectionP values
+table(rowSums(badDetP))
+
+# count number of probes with at least 1 bad detectionP 
+nbadDetP_rowsums <-  sum(rowSums(badDetP)>=1)
+nbadDetP_rowsums  # 5043 probes have at least one badDetP value
+
+# check number of good probes
+sum(rowSums(badDetP)==0) # 480469
+
+# keep only good probes
+ngoodDetP <- rowSums(badDetP)==0
+
+# get list of cpgids with bad probes to remove
+# these will be removed after preprocessing with noob and bmiq
+detP_rm <- names(ngoodDetP[ngoodDetP==FALSE])
+```
+
+Get names of probes with less than 3 beads
+```{r beads}
+# using wateRmelon get bead count
+beadcount <- beadcount(rgset_nobadsamp)
+
+# get boolean matrix of failed  beads
+bead_failed <- is.na(beadcount)
+
+# get number of cpg probes with failed beads
+sum(rowMeans(bead_failed)>0.01) #3954
+
+# get names of probes with less than 3 probes
+bead_rm <- rownames(bead_failed)[rowMeans(bead_failed) > 0.01]
+```
+
+Combine list bad detP probes and probes with low bead count for removal after preprocessing/normalization
+```{r badprobes}
+# get combined list of all bad probes (without duplicates)
+bad_probes <- union(detP_rm, bead_rm)
+
+# get bad probe num
+length(bad_probes) # 8482
+```
+
+Save data with bad samples removed for cell type deconvolution. 
+The estimateCellCounts2 function only accepts rgsets.   
+```{r save_unprocessed_rgset}
+save(rgset_nobadsamp, 
+     file=here("output_data", "preprocessed_data", "2023-06-28_child_rgset_nobadsamp.Rdata"))
+```
+
+
+## Data preprocessing with Noob followed by BMIQ 
+
+Noob corrects for background using out-of-band probes (fluorescence of infinium 1 probes in opposite channel which they are designed for) and normalized-exponentional convolution. BMIQ is an intra-sample normalisation procedure, correcting the bias of type-2 probe values. BMIQ uses a 3-step procedure: (i) fitting of a 3-state beta mixture model, (ii) transformation of state-membership probabilities of type2 probes into quantiles of the type1 distribution, and (iii) a conformal transformation for the hemi-methylated probes
+
+Normalize data using preprocessNoob - good for data where a large difference between groups is not expected.  
+```{r noob_and_bmiq}
+# preprocessNoob
+noob <- preprocessNoob(rgset_nobadsamp)
+
+# get probe type for BMIQ
+probetype <- getProbeType(rgset_nobadsamp)
+# rename to be consistent with BMIQ
+probetypenum <- ifelse(probetype == "I", 1, 2)
+# expect some difference, but for reproducibility, set seed
+set.seed(1234)
+# bmiq normalization
+bmiq <- BMIQ(noob, design.v = probetypenum)
+
+# check that rows in all three are identical
+identical(rownames(noob), rownames(bmiq)) #true
+```
+
+Map noob to genome for more QC and probe removal.
+```{r maptogenome}
+gmset <- mapToGenome(noob)
+```
+
+
+## Check for sample mix-ups based on predicted sex
+
+Check for sample mix-ups based on sex.
+```{r predicted_sex}
+# add predicted sex to gmset
+gmset <- addSex(gmset)
+
+# plot based on predicted sex
+plotSex(gmset)
+```
+Biological males and females are well-separated and labelled correctly suggesting no sex mixups. 
+
+## Bad probes, SN probes, XY probes, and cross reactive probes. 
+
+Remove bad probes (detP or bead count), SNP probes, XY probes, and cross-reactive probes from noob. Then subset BMIQ rows for those in noob. The minfi function requires a genomic methyl set - cant use with BMIQ beta 
+
+Remove bad probes.
+```{r remove_badprobes}
+# subset rows to exclude cpgids in bad probe list
+gmset_nobadprobes <- gmset[!rownames(gmset) %in% bad_probes, ]
+
+# check size
+dim(gmset) #485512    298
+dim(gmset_nobadprobes) #477030    298
+# 8482 bad probes removed
+```
+
+Remove probes with SNPS  
+```{r remove_snps}
+# drop snps
+# re run with maf=0.05????
+gmset_no_badprobes_snps <- dropLociWithSnps(gmset_nobadprobes, snps = c("CpG"), maf = 0)
+
+# create table of removed snps (should be all )
+gmset_nosnpstable <- table(is.na(getSnpInfo(gmset_no_badprobes_snps)$CpG_rs))
+
+# check size
+dim(gmset_nobadprobes) # 477030    298
+dim(gmset_no_badprobes_snps) # 461697     298
+# remove 15333 probes
+```
+
+Remove XY probes.  
+```{r remove_xy}
+# drop x and y 
+annotation=getAnnotation(gmset_no_badprobes_snps)
+
+# check how many x and y probes are left
+sum(annotation$chr %in% c("chrX","chrY"))
+# 10987 left
+
+# get just probes that maps to autosomes
+autosomes = annotation[!annotation$chr %in% c("chrX","chrY"), ]
+
+# Remove XY
+gmset_no_badprobes_snps_xy <- gmset_no_badprobes_snps[getAnnotation(gmset_no_badprobes_snps)[,4] %in% row.names(autosomes),]
+
+# check that all x y probes are removed from set
+sum(gmset_no_badprobes_snps_xy$chr %in% c("chrX","chrY")) # 0
+
+# check size
+dim(gmset_no_badprobes_snps) # 461697    298
+dim(gmset_no_badprobes_snps_xy) # 450827    298
+# remove 10860 probes
+
+#remove objects we no longer need
+remove(annotation)
+remove(autosomes)
+```
+
+Remove cross-reactive probes based on Chen 2013.    
+```{r remove_cross_reactive_probes}
+# read in cross-reactive probe info from Chen (2013) paper
+cr_probes <- read.csv(here("input_data",
+                           "CHILD_raw_dnam_data",
+                           "chen_2013_cross_reactive_probes.csv"), 
+                      header=TRUE)
+
+gmset_no_badprobes_snps_xy_cross <-  
+  gmset_no_badprobes_snps_xy[!(rownames(gmset_no_badprobes_snps_xy) %in% cr_probes$TargetID), ] 
+
+dim(gmset_no_badprobes_snps_xy) # 450827    298
+dim(gmset_no_badprobes_snps_xy_cross) # 424644    298
+# remove 26183 probes
+```
+
+Subset probes in BMIQ normalized data based on cleaned gmset data.
+```{r bmiq_subset}
+bmiq_clean <- bmiq[rownames(bmiq) %in% rownames(gmset_no_badprobes_snps_xy_cross), ]
+
+# gmset_no_badprobes_snps_xy_crosscheck probe numbers - should be the same
+dim(gmset_no_badprobes_snps_xy_cross) # 424644    298
+dim(bmiq_clean) # 424644    298
+```
+
+## Subset out pdata, fdata, annotation
+
+Get pdata and annotation  from preprocessed noob data
+```{r get_methinfo}
+# from noob
+pdata <- pData(gmset_no_badprobes_snps_xy_cross)
+annotation <- getAnnotation(gmset_no_badprobes_snps_xy_cross)
+```
+
+
+## Quality control of CHILD data  
+
+### MDS plot
+MDS and PCA are both dimension reduction techniques but have different properties. 
+
+PCA plots the original vectors in n-dimensional space. The data are projected onto the directions in the data with the most variance. Hence the “spread” of the data is roughly conserved as the dimensionality decreases.  
+
+The input to MDS is the pairwise distances between points. The output of MDS is a two- or three-dimensional projection of the points where distances are preserved.  
+
+Minfi's MDS plot calculates Euclidean distance between samples using the numPositions most variable CpG positions. These distances are then projected into a 2-d plane using classical multidimensional scaling transformation.  
+
+Make MDS plot to examine data - part of QC.   
+```{r mds_plot}
+# do MDS plot manually based on code from minfi - allows plotting with ggplot\
+# using commands that mdsplot uses to calculate mds distances
+beta_ordered <- order(rowVars(bmiq_clean), decreasing = TRUE)[seq_len(1000)] 
+beta_ordered_dist <- dist(t(bmiq_clean[beta_ordered, ]))
+beta_dist_naomit <- na.omit(beta_ordered_dist)
+fit <- cmdscale(beta_dist_naomit)
+
+# convert to dataframe for plotting
+fit_df <- as.data.frame(fit)
+
+# add in tissue information
+fit_df$tissue <- pdata$Tissue
+fit_df$samplename <- pdata$SampleID
+
+#plot
+mds <- ggplot(fit_df, aes(x=fit[,1], y=fit[,2])) + 
+  geom_point(size=4, shape=21, alpha=0.7, aes(fill=tissue))+
+  theme_classic() +
+  labs(x="Distance 1", y="Distance 2", title = "Multidimensional scaling plot") 
+mds
+# one cord blood/age one sample is mixed up
+
+# tissue mix up for sample 20113 -> relabel
+pdata$SampleID[5] <- "20113_P"
+pdata$Tissue[5] <- "P"
+pdata$SampleID[6] <- "20113_C"
+pdata$Tissue[6] <- "C"
+
+# redo mds plot with relabelled samples
+# using commands that mdsplot uses to calculate mds distances
+beta_ordered <- order(rowVars(bmiq_clean), decreasing = TRUE)[seq_len(1000)] 
+beta_ordered_dist <- dist(t(bmiq_clean[beta_ordered, ]))
+beta_dist_naomit <- na.omit(beta_ordered_dist )
+fit <- cmdscale(beta_dist_naomit)
+
+# convert to dataframe for plotting
+fit_df <- as.data.frame(fit) 
+
+# add in tissue information
+fit_df$tissue <- pdata$Tissue
+fit_df$samplename <- pdata$SampleID
+
+# plot
+mds2 <- ggplot(fit_df, aes(x=fit[,1], y=fit[,2])) + 
+  geom_point(size=4, shape=21, alpha=0.7, aes(fill=tissue))+
+  theme_classic() +
+  labs(x="Distance 1", y="Distance 2", title = "Multidimensional scaling plot") 
+mds2
+```
+
+
+### Beta density plot
+
+Examine beta density before and after normalization - part of QC
+
+Beta density before normalization (but after bad probes removed)
+```{r beta_density_before}
+# before normalization
+densityPlot(getBeta(rgset_nobadsamp))
+```
+
+Beta density after noob normalization, and after normalization with noob + bmiq
+```{r beta_density_after}
+# density plot after noob normalizatin
+densityPlot(getBeta(noob))
+
+# after normalization noob and bmiq normalization
+densityPlot(bmiq)
+```
+
+Beta density after nooob + bmiq normalization, and after removal of SNP, XY, and cross reactive probes. 
+```{r beta_density_after_probe_removal}
+densityPlot(getBeta(gmset_no_badprobes_snps_xy_cross))
+
+# after bad probe removal, snp, xy, cross reactive probe removal of noob and bmiq preprocessed data
+densityPlot(bmiq_clean)
+```
+
+
+### QC Plot  
+
+Minfi's QC plot plots points as a function of the methylated and unmethylated values. Points that have low methylated or unmethylated values will fall below QC cut off line (set at 10.5). This does not necessarily mean that samples are bad - futher investigation is needed to determine why these samples fall below the cut off line before determining if they should be discarded.  
+
+Make QC plot - part of data QC.  
+```{r qc_plot}
+# use methyl or genomicmethyl data
+# therefore must use data after noob but before bmiq normalization
+unmeth_medians <- log2(colMedians(na.omit(getUnmeth(noob))))
+meth_medians <- log2(colMedians(na.omit(getMeth(noob))))
+qc_data <- DataFrame(mMed = meth_medians, uMed = unmeth_medians)
+rownames(qc_data) <- colnames(gmset_no_badprobes_snps_xy_cross)
+qc_data <- as.data.frame(qc_data)
+qc_data$Sample_ID <- pdata$Sample_ID
+qc_data$tissue <- pdata$Tissue
+qc_data$sex <- pdata$Sex
+qc_data$chip <- pdata$Slide
+qc_data$run <- pdata$Run
+
+# can change badsamplecutoff
+badSampleCutoff = 10.5
+meds <- (qc_data$mMed + qc_data$uMed)/2
+whichBad <- which((meds < badSampleCutoff))
+
+# graph it
+qcplot<- ggplot(qc_data, aes(x=mMed, y=uMed)) + 
+  geom_point(size=4, shape=21, aes(fill=as.factor(run))) +
+  labs(x="Methylated median", y="Unmethylated median", title="QC Plot") +
+  geom_abline(intercept=badSampleCutoff * 2, slope=-1, linetype = "dashed") +
+  theme_classic() 
+qcplot
+# samples from run number 2 fall below cut off line
+# Run 2 has lower overall intensity because Meaghan and Julie (Mostly Meaghan) 
+# accidentally inverted some of the reagents in the staining step which affects
+# the intensities values (as per correspondance with Illumina)
+# samples are still good!. 
+```
+
+
+## Duplicate sample removal
+
+Some cord blood samples had lots of DNA and were run with biological replicates. Plot the beta density to see if the replicates are similar, (and if so) then randomly choose which sample to choose.
+
+```{r dup_sample_removal}
+
+#################### SAMPLE SELECTION #######################
+
+# these should have set.seed() so same sample always selected
+# in this case selected sample is specified in code
+# next time use set seed so it does not change every time
+# samples with repeat measurements: 20367_C (4x), 40060_C (4x), 40083_C (4x)
+
+#########
+# 20367 #
+#########
+
+# get rownums of 20367
+dups <- grep("20367_C", pdata$SampleID)
+
+# get rownames of 20367
+dups_row <- rownames(pdata[dups,])
+
+# density plot of 20367
+dup_density <- densityPlot(bmiq_clean[, colnames(bmiq_clean) %in% dups_row], 
+                           sampGroups = colnames(bmiq_clean[, colnames(bmiq_clean) %in% dups_row]), 
+                           legend = FALSE)
+dup_density
+
+cor(bmiq_clean[, dups_row[1]], bmiq_clean[, dups_row[2]]) # 0.9986504
+cor(bmiq_clean[, dups_row[1]], bmiq_clean[, dups_row[3]]) # 0.9991465
+cor(bmiq_clean[, dups_row[1]], bmiq_clean[, dups_row[4]]) # 0.9989069
+cor(bmiq_clean[, dups_row[2]], bmiq_clean[, dups_row[3]]) # 0.9985455
+cor(bmiq_clean[, dups_row[2]], bmiq_clean[, dups_row[4]]) # 0.9979945
+cor(bmiq_clean[, dups_row[3]], bmiq_clean[, dups_row[4]]) # 0.9990659
+
+# select a random sample from dups_row to include in analysis
+sample(1:4, 1) #selected sample number 2 
+dups_row[2] # use this sample in analysis: "9343114078_R06C01" (20367_C_Rep3_2)
+
+#########
+# 40060 #
+#########
+
+# get rownums of 40060_C  
+dups <- grep("40060_C", pdata$SampleID)
+
+# get rownames of 40060_C  
+dups_row <- rownames(pdata[dups,])
+
+# density plot of 40060_C  
+density_40060C <- densityPlot(bmiq_clean[, colnames(bmiq_clean) %in% dups_row], 
+                              sampGroups = colnames(bmiq_clean[, colnames(bmiq_clean) %in% dups_row]), legend = FALSE)
+density_40060C
+
+cor(bmiq_clean[, dups_row[1]], bmiq_clean[, dups_row[2]]) # 0.9987334
+cor(bmiq_clean[, dups_row[1]], bmiq_clean[, dups_row[3]]) # 0.9986117
+cor(bmiq_clean[, dups_row[1]], bmiq_clean[, dups_row[4]]) # 0.998675
+cor(bmiq_clean[, dups_row[2]], bmiq_clean[, dups_row[3]]) # 0.9978222
+cor(bmiq_clean[, dups_row[2]], bmiq_clean[, dups_row[4]]) # 0.9980674
+cor(bmiq_clean[, dups_row[3]], bmiq_clean[, dups_row[4]]) # 0.9987694
+
+# select a ranomd sample from dups_row to include in analysis
+sample(1:4, 1) # select sample number 2 
+dups_row[3] # use this sample in analysis: "9341679111_R02C02" (40060_C_Rep1_3)
+
+#########
+# 40083 #
+#########
+
+# get rownums of 40083_C  
+dups <- grep("40083_C", pdata$SampleID)
+
+# get rownames of 40083_C  
+dups_row <- rownames(pdata[dups,])
+
+# density plot of 40083_C  
+density40083C <- densityPlot(bmiq_clean[, colnames(bmiq_clean) %in% dups_row], 
+                             sampGroups = colnames(bmiq_clean[, colnames(bmiq_clean) %in% dups_row]), legend = FALSE)
+density40083C
+
+cor(bmiq_clean[, dups_row[1]], bmiq_clean[, dups_row[2]]) # 0.9985413
+cor(bmiq_clean[, dups_row[1]], bmiq_clean[, dups_row[3]]) # 0.9989008
+cor(bmiq_clean[, dups_row[1]], bmiq_clean[, dups_row[4]]) # 0.9989135
+cor(bmiq_clean[, dups_row[2]], bmiq_clean[, dups_row[3]]) # 0.9984721
+cor(bmiq_clean[, dups_row[2]], bmiq_clean[, dups_row[4]]) # 0.9981598
+cor(bmiq_clean[, dups_row[3]], bmiq_clean[, dups_row[4]]) # 0.9988162
+
+# select a ranomd sample from dups_row to include in analysis
+sample(1:4, 1) #select sample number 2 
+dups_row[2] # use this sample in analysis: "9343114078_R05C01" (40083_C_Rep2_2)
+```
+
+Remove bad samples before batch correction as having multiple samples from same particpant may affect variance.  
+```{r remove_dups}
+# make list of samples to remove from beta and pData
+dups_rm <-c("9298768102_R06C01", "9341679111_R05C02", "9298768023_R03C02",
+            "9341679076_R06C02", "9297962089_R06C02", "9298768023_R02C02",
+            "9341679097_R02C02", "9341679114_R01C02", "9298768023_R06C01")
+
+# remove replicates from pdata                        
+pdata_nodups <- pdata[!rownames(pdata) %in% dups_rm, ]
+
+# check that 9 samples were removed
+dim(pdata) # 298  17
+dim(pdata_nodups) # 289  17
+
+# remove replicates from beta matrix
+bmiq_clean_nodups <- bmiq_clean[,!colnames(bmiq_clean) %in% dups_rm]
+# check that 9 samples were removed
+dim(bmiq_clean) # 298
+dim(bmiq_clean_nodups) # 289
+# check that values are beta values (should fall between 0 and 1)
+min(bmiq_clean_nodups) # 0.002764002
+max(bmiq_clean_nodups) # 0.9982911
+```
+
+Rename processed dnam data
+```{r mvalues}
+# rename final object to betas
+betas <- bmiq_clean_nodups
+
+# double check max and min
+max(betas) # 0.9982911
+min(betas) # 0.002764002
+```
+
+Rename and then save processed and normalized data for analysis.
+```{r save_data}
+#save mvalues, pdata, and annotation
+save(betas, pdata_nodups, annotation,
+     file=here("output_data", 
+               "preprocessed_data", 
+               "2023-06-28_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
+
+sesh <- sessionInfo()
+
+save(sesh,
+     file=here("output_data", 
+               "preprocessed_data", 
+               "2023-06-28_CHILD_preprocessed_betas_pdata_annotation_session_info.Rdata"))
+```

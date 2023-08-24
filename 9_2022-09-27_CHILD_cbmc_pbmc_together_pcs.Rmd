@@ -1,0 +1,163 @@
+---
+title: "Year one cell type PC generation"
+author: "SL"
+date: "2021-09-24"
+output: html_document
+---
+
+*IMPORTANT*: This code is for cell type correction before linear models for EWAS. The other option is to include cell type proportions in EWAS linear models. As CHILD is a relatively small cohort (and we lose many participants to missing data), correcting for cell type before linear models can improve power to detect DNAm changes. When cohorts are larger (and better powered), it is more correct to include cell types (or cell type PCs) in final linear model. 
+
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+library(tidyverse)
+library(minfi)
+library(here)
+library(pbapply)
+library(compositions)
+library(MASS)
+```
+
+Load preprocessed CHILD data.  
+```{r load_CHILD_data, message=FALSE, warning=FALSE}
+load(here("output_data", 
+          "preprocessed_data", 
+          "2023-06-28_CHILD_preprocessed_betas_pdata_annotation.Rdata"))
+```
+
+Load deconvolution data.
+```{r load_CHILD_data, message=FALSE, warning=FALSE}
+load(here("output_data", 
+          "deconvolution", 
+          "2023-06-28_cbmc_pbmc_deconvolution.Rdata"))
+```
+
+
+Subset out age one and cord blood pData. Then subset for samples that have data available at both time points. 
+```{r sub_pdata}
+cb_pdata <- subset(pdata_nodups, Tissue == "C")
+dim(cb_pdata) # 144  17
+
+# subset out age one pdata
+y1_pdata <- subset(pdata_nodups, Tissue == "P")
+dim(y1_pdata) #145  17
+
+# year one data has one individual that is missing birth data
+# remove this individual
+y1_pdata_sub <- y1_pdata[y1_pdata$Sample_Label %in% cb_pdata$Sample_Label, ]
+dim(y1_pdata_sub) # 144  17
+```
+
+
+## Principle component (PC) generation 
+
+Remove duplicates from cord blood deconvolution data then rename rows with pdata sample label.
+```{r remove_dups_cb_cellcounts}
+# convert deconvolution data to dataframe
+child_fscbc_ecc2_cb_df <- as.data.frame(child_fscbc_ecc2_cb$prop)
+# check size
+dim(child_fscbc_ecc2_cb_df) # 153 6
+
+# make list of samples to remove from beta and pData
+dups_rm <-c("9298768102_R06C01", "9341679111_R05C02", "9298768023_R03C02",
+            "9341679076_R06C02", "9297962089_R06C02", "9298768023_R02C02",
+            "9341679097_R02C02", "9341679114_R01C02", "9298768023_R06C01")
+
+# remove replicates from cell type estimates                      
+child_fscbc_ecc2_cb_df_nodups <-
+  child_fscbc_ecc2_cb_df[!rownames(child_fscbc_ecc2_cb_df) %in% dups_rm, ]
+
+# check that 9 samples were removed
+dim(child_fscbc_ecc2_cb_df_nodups) # 144   6
+
+# check if cord blood cell counts are in the same order as pdata
+identical(rownames(child_fscbc_ecc2_cb_df_nodups), rownames(cb_pdata)) # TRUE
+# rename rows of cord blood cell counts to sample label
+rownames(child_fscbc_ecc2_cb_df_nodups) <- cb_pdata$Sample_Label
+
+# rename cord blood cell counts columns
+colnames(child_fscbc_ecc2_cb_df_nodups) <- 
+  paste(colnames(child_fscbc_ecc2_cb_df_nodups), "cb", sep="_")
+```
+
+Convert age one cell counts to data frame and rename rows to pdata sample label.
+```{r ageone_cellcounts}
+# convert to dataframe
+child_fscbc_ecc2_y1_df <- as.data.frame(child_fscbc_ecc2_y1$prop)
+# check size
+dim(child_fscbc_ecc2_y1_df) # 145 5
+
+# subset for samples that have data at both time points
+child_fscbc_ecc2_y1_df_sub <- 
+  child_fscbc_ecc2_y1_df[rownames(child_fscbc_ecc2_y1_df) %in% rownames(y1_pdata_sub), ]
+# check size
+dim(child_fscbc_ecc2_y1_df_sub) # 144 5
+
+# check if year one cell counts are in the same order as pdata
+identical(rownames(child_fscbc_ecc2_y1_df_sub), rownames(y1_pdata_sub)) # TRUE
+# rename rows of cord blood cell counts to sample label
+rownames(child_fscbc_ecc2_y1_df_sub) <- y1_pdata_sub$Sample_Label
+
+#rename year one cell counts columns
+colnames(child_fscbc_ecc2_y1_df_sub) <-
+  paste(colnames(child_fscbc_ecc2_y1_df_sub), "y1", sep="_")
+```
+
+
+Make combined cell counts data frame. Perform robust PCA after combining.
+```{r combined_cellcounts_pca}
+# check that cord blood and year one cell counts are in the same order
+identical(rownames(child_fscbc_ecc2_cb_df_nodups), 
+          rownames(child_fscbc_ecc2_y1_df_sub)) # TRUE
+
+# combine ilr data then do pca
+cb_ilr <- ilr(child_fscbc_ecc2_cb_df_nodups[,1:7])
+y1_ilr <- ilr(child_fscbc_ecc2_y1_df_sub[,1:6])
+
+colnames(cb_ilr) <- c(1:6)
+colnames(y1_ilr) <- c(7:11)
+
+comb <- cbind(cb_ilr %>% as.data.frame() %>% as.matrix(), 
+              y1_ilr %>% as.data.frame() %>% as.matrix())
+
+cv_comb <- MASS::cov.rob(comb, cor = FALSE)
+comb_ilr_pca <- suppressWarnings(princomp(comb, covmat = cv_comb, 
+                                    cor = FALSE))
+
+```
+
+
+Examine variance captured by PCs.
+```{r pc_variance}
+var_explained = comb_ilr_pca$sdev^2 /sum(comb_ilr_pca$sdev^2)
+ggplot(var_explained %>% as.data.frame(), aes(y=., x=(c(1:11)))) + geom_col()
+cumsum(var_explained) 
+#    Comp.1    Comp.2    Comp.3    Comp.4    Comp.5    Comp.6    Comp.7    Comp.8    Comp.9   Comp.10 
+# 0.3146548 0.4629302 0.5769797 0.6800084 0.7664164 0.8435254 0.9091330 0.9468253 0.9709447 0.9926339 
+#   Comp.11 
+# 1.0000000 
+
+```
+
+Save PCs
+```{r save_PCs}
+save(comb_ilr_pca,
+     file = here("output_data", 
+                 "deconvolution",
+                 "2023-08-14_CHILD_CBMC_PBMC_PCs.Rdata"))
+
+sesh <- sessionInfo()
+
+save(sesh,
+     file = here("output_data", 
+                 "deconvolution",
+                 "2023-08-14_CHILD_CBMC_PBMC_PCs_session_info.Rdata"))
+
+write.csv(comb_ilr_pca$scores,
+          here("tables",
+               "deconvolution",
+               "2023-08-14_cbmc_pbmc_PCs.csv"))
+```
