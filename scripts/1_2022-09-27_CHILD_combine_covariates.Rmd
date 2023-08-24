@@ -1,0 +1,600 @@
+---
+title: "Combined CHILD covariates, NO2, and PM2.5 data"
+author: "SL"
+date: "2020-11-03"
+output: html_document
+---
+
+*Purpose*: The purpose of this script is to create a consolidated dataframe of all new CHILD data that was provided in the 2020 request for updated data. 
+
+Load libraries
+```{r libraries}
+library(plyr)
+library(tidyverse)
+library(readxl)
+library(here)
+```
+
+Load CHILD covariates and NO2 data
+```{r load covariates}
+# get list of all csv files in first set of data from 2020 request 
+f <- list.files(here("input_data", 
+                     "Data request Aug 2020", 
+                     "CP139 data files 2"), 
+                pattern = "*.csv",
+                full.names = TRUE)
+
+#read these files into a list
+covariate_files = lapply(f, read.delim, sep=",")
+
+# set names of list equal to the file names, without the file type
+names(covariate_files) <- str_extract(list.files(path = here("input_data", 
+                                                             "Data request Aug 2020", 
+                                                             "CP139 data files 2"), 
+                                                 pattern = "*.csv"), '.*(?=\\.csv)')
+
+# read out each list item into global environment as dataframe
+list2env(covariate_files, .GlobalEnv)
+
+# get list of all csv files in second set of data from 2020 request 
+g <- list.files(path = here::here("input_data", 
+                                  "Data request Aug 2020", 
+                                  "DR2"),
+                pattern = "*.csv",
+                full.names = TRUE)
+
+# read these files into a list
+covariate_files2 <- lapply(g, read.delim, sep=",")
+
+# set names of list equal to the file names, without the file type
+names(covariate_files2) <- str_extract(list.files(path = here("input_data", 
+                                                              "Data request Aug 2020", 
+                                                              "DR2"),
+                                                  pattern = "*.csv"), '.*(?=\\.csv)')
+
+# read out each list item into global environment as dataframe
+list2env(covariate_files2, .GlobalEnv)
+
+# old version air pollution data is in excel workbook format in second set of data from new 2020 request
+h <- list.files(path = here("input_data", 
+                            "Data request Aug 2020", 
+                            "DR2"), 
+                pattern = "NO2*",
+                full.names = TRUE)
+
+# read these files into a list
+# read_xlsx usings tibbles (which suck), therefore read in as dataframe
+covariate_files3 <- lapply(h, function(x) {as.data.frame(read_xlsx(x))})
+
+# rename list items with file name
+# remove file type
+# replace spaces with underscore
+names(covariate_files3) <- 
+  sub(" ", "_", str_extract(list.files(path = here("input_data", 
+                                                   "Data request Aug 2020", 
+                                                   "DR2"),
+                                       pattern = "NO2"), '.*(?=\\.xlsx)'))
+
+# read out each list item into global environment as dataframe
+list2env(covariate_files3, .GlobalEnv)
+
+# read in most recent (2019 version) of no2 exposure data 
+no2_2019 <- read_xlsx(here("input_data", 
+                           "2022-09-26_no2_exposure_data_2019_version", 
+                           "2022-09-26_NO2_exposure_pregnancy_and_first_year_of_life_2019_version.xlsx"))
+no2_2019 <- as.data.frame(no2_2019)
+
+# rename columns of no2_2019 for clarity
+colnames(no2_2019)[-1] <- paste(colnames(no2_2019)[-1], "2019v", sep="_")
+```
+
+Check that all covariate variables are in same order according to CHILD REEGLE participant.
+```{r check_order}
+# read in order sheet
+participants <- as.data.frame(read_xlsx(here("input_data", 
+                                             "Data request Aug 2020", 
+                                             "CP139 data files 2", 
+                                             "IDs to share DR139.xlsx")))
+
+# make list of all data frames for comparison of participant order
+covariate_dfs <- Filter(function(x) is(x, "data.frame"), mget(ls()))
+
+# return true/false for same order according to participant list
+sapply(covariate_dfs, function(x) {return(identical(as.character(x[,1]), 
+                                                    as.character(participants[,1])))}) # ALL TRUE
+
+```
+
+Combine all covariate data frames into one large master dataframe. 
+```{r combine_data}
+# bind all columns together
+covariates <- do.call(cbind, covariate_dfs)
+
+# remove duplicated subjectnumber columns
+covariates <- dplyr::select(covariates, -contains("subjectnumber", ignore.case = TRUE))
+```
+
+Recode all missing (999) or skipped data (8888 or 888) to NA.
+```{r recode_NA}
+covariates[covariates == 999] <- NA
+covariates[covariates == "999"] <- NA
+covariates[covariates == 8888] <- NA
+covariates[covariates == "8888"] <- NA
+covariates[covariates == 888] <- NA
+covariates[covariates == "888"] <- NA
+```
+
+Check class of data. This is important for correct covariate analysis. Refactor things with inappropriate coding.
+```{r check_class}
+# check that study centre is the same
+studycentre <- dplyr::select(covariates, matches("studycenter", ignore.case = TRUE))
+
+# compare if study sites are identical for each participant
+identical(studycentre[,1], studycentre[,2]) #true
+identical(studycentre[,1], studycentre[,3]) #true
+identical(studycentre[,1], studycentre[,4]) #true
+identical(studycentre[,1], studycentre[,5]) #true
+identical(studycentre[,1], studycentre[,6]) #true
+identical(studycentre[,1], studycentre[,7]) #true
+identical(studycentre[,1], studycentre[,8]) #true
+identical(studycentre[,1], studycentre[,9]) #true
+identical(studycentre[,1], studycentre[,10]) #false
+identical(studycentre[,1], studycentre[,11]) #true
+identical(studycentre[,1], studycentre[,12]) #true
+identical(studycentre[,1], studycentre[,13]) #true
+identical(studycentre[,1], studycentre[,14]) #true
+identical(studycentre[,1], studycentre[,15]) #false
+identical(studycentre[,1], studycentre[,16]) #false
+identical(studycentre[,1], studycentre[,17]) #false 
+identical(studycentre[,1], studycentre[,18]) #false
+identical(studycentre[,1], studycentre[,19]) #true
+identical(studycentre[,1], studycentre[,20]) #true
+
+# study centre columns which are not identical have missing values
+# to be eligble for study participants had to live in same area
+# can assume participants are always in the same area
+
+# remove redundant info
+covariates2 <- dplyr::select(covariates, -matches("status|study|eligibility|subjecttype", ignore.case = TRUE)) #this is info about study site and group
+
+covariates2$studycentre <- covariates$`Q107 CBIRTHCD_cleaned.StudyCenter`
+
+# remove these covariates as they dont add info 
+covariates2 <- subset(covariates2, 
+                      select= -c(urine_cotinine.cohort, # what cohort (general)
+                                 urine_cotinine.visit)) # just says it was at 3 monts
+# rename columns
+colnames(covariates2) <- c("sex", "gestational_age", 
+                           "weight_birth", "weight_3m", 
+                           "weight_12m", "height_3m", 
+                           "height_12m", "head_circ_3m", 
+                           "head_circ_12m", "birth_month", 
+                           "move_3m", "move_6m", 
+                           "move_12m", "maternal_age_birth", 
+                           "maternal_atopy", "prenatal_second_hand_smoke", 
+                           "prenatal_maternal_smoke", "pss_pre36wk", 
+                           "csed_pre36wk", "pss_pre18wk", 
+                           "csed_pre18wk", "pss_6m", 
+                           "csed_6m", "pss_12m", 
+                           "csed_12m", "no2_prenatal_tm1_2019v", "no2_prenatal_tm2_2019v", 
+                           "no2_prenatal_tm3_2019v", "no2_prenatal_avg_2019v", "no2_y1t1_2019v", 
+                           "no2_y1t2_2019v", "no2_y1t3_2019v", "no2_y1t4_2019v", 
+                           "no2_y1_2019v", "green_preg_2015v", "no2_prenatal_tm1_2015v", 
+                           "no2_prenatal_tm2_2015v", "no2_prenatal_tm3_2015v", "no2_prenatal_avg_2015v", 
+                           "no2_y1t1_2015v", "no2_y1t2_2015v", "no2_y1t3_2015v", 
+                           "no2_y1t4_2015v", "no2_y1_2015v", "maternal_asthma_ever", 
+                           "maternal_asthma", "paternal_asthma", 
+                           "maternal_race", "paternal_race", 
+                           "sample_id",  "maternal_education",
+                           "maternal_education_other",
+                           "maternal_education_length", 
+                           "paternal_education", 
+                           "paternal_education_other",
+                           "paternal_education_length","total_income", 
+                           "percent_income_from_gov",
+                           "ses_community_rank", "ses_canada_rank",
+                           "gravidity",
+                           "mod", "height_birth",
+                           "head_circ_birth","pets_3mos", 
+                           "pests_3mos", "leaks_3mos", 
+                           "mould_3mos","attached_garage_3mos",
+                           "pets_6mos", "pets_y1", 
+                           "pests_y1", "leaks_y1", 
+                           "mould_y1", "attached_garage_y1",
+                           "maternal_smoking_y1", "clinician_wheeze_dx_y1",
+                           "clinician_atopy_dx_y1", "reported_asthma_dx_y1",
+                           "prov_vaccines_6mos_y1", "prov_vaccines_12mos_y1",
+                           "reported_wheezing_y1", "wheeze_meds_y1",
+                           "prov_vaccines_2mos_6mos", "prov_vaccines_4mos_6mos",
+                           "prov_vaccines_6mos_6mos", "no_vaccines_6mos",
+                           "reported_asthma_dx_3y", "reported_wheeze_3y",
+                           "bronchodilator_use_3y", "csi_use_3y",
+                           "clinician_asthma_dx_y3", "wheeze_previous12mos_3y",
+                           "clinician_wheeze_dx_y3", "clinician_allergy_dx_3y",
+                           "clinican_atopy_dx_y3", "reported_asthma_dx_5y",
+                           "reported_wheeze_5y", "reported_atopy_dx_5y",
+                           "bronchodilator_use_5y", "csi_use_5y",
+                           "clinician_asthma_dx_5y", "clinician_wheeze_wo_colds_5y",
+                           "clinician_wheeze_w_colds_5y", "clinician_allergy_dx_5y",
+                           "clinician_atopy_dx_5y", "maternal_reported_asthma_dx_ever_18wk",
+                           "maternal_clinician_asthma_dx_ever_18wk", "maternal_smoking_18wk",
+                           "pets_18wk", "pests_18wk", 
+                           "mould_18wk", "leaks_18wk",
+                           "attached_garage_18wk", "urine_cotinine_3m",
+                           "studycentre")
+
+# change naming for ease
+covariates_old <- covariates
+covariates <- covariates2
+
+# check class
+lapply(covariates, class)
+
+# remove maternal and paternal education other class
+covariates <- subset(covariates, 
+                     select = -c(maternal_education_other, paternal_education_other))
+
+# recode classes where necessary
+# NB: factor variables that should be expressed in english terms (other than yes/no) are coded as character class instead of factor class
+
+################################
+#Anthropometric and ethnic data#
+################################
+
+# birth month as character
+covariates$birth_month <- as.factor(covariates$birth_month)
+levels(covariates$birth_month) <- c("january", "october", "november", "december",
+                                    "february", "march", "april", "may",
+                                    "june", "july", "august", "september")
+# relevel birth to in order starting at january
+covariates$birth_month <- factor(covariates$birth_month, 
+                                 levels = c("january", "february", "march", "april",
+                                            "may", "june", "july", "august",
+                                            "september", "october", "november", "december"))
+
+# maternal atopy factor
+covariates$maternal_atopy <- as.factor(covariates$maternal_atopy)
+# prenatal second hand smoke as factor
+covariates$prenatal_second_hand_smoke <- as.factor(covariates$prenatal_second_hand_smoke)
+# maternal smoking during prenatal period as factor
+covariates$prenatal_maternal_smoke <- as.factor(covariates$prenatal_maternal_smoke)
+
+
+# maternal asthma ever as factor
+covariates$maternal_asthma_ever <- as.factor(covariates$maternal_asthma_ever)
+# maternal asthma as factor
+covariates$maternal_asthma <- as.factor(covariates$maternal_asthma)
+# paternal asthma as factor
+covariates$paternal_asthma <- as.factor(covariates$paternal_asthma)
+
+# maternal race as character
+covariates$maternal_race <- as.factor(covariates$maternal_race)
+# paternal race as character
+covariates$paternal_race <- as.factor(covariates$paternal_race)
+
+# move 3 months
+covariates$move_3m <- as.factor(covariates$move_3m)
+# move 6 months
+covariates$move_6m <- as.factor(covariates$move_6m)
+# move 12 months
+covariates$move_12m <- as.factor(covariates$move_12m)
+
+# studycentre
+covariates$studycentre <- as.factor(covariates$studycentre)
+
+########################
+#Prenatal SES (SES18WK)#
+########################
+
+# maternal education as factor
+covariates$maternal_education <- as.character(covariates$maternal_education)
+covariates$maternal_education <- as.factor(covariates$maternal_education)
+levels(covariates$maternal_education) <- c("somehighschoool", 
+                                           "completedhighschool", 
+                                           "somecollege", "completedcollege",
+                                           "someuniversity", 
+                                           "completeduniversity",
+                                           "mastersdegree", "phd")
+
+# paternal education as factor
+covariates$paternal_education <- as.character(covariates$paternal_education)
+covariates$paternal_education <- as.factor(covariates$paternal_education)
+levels(covariates$paternal_education) <- c("lessthanhighschool", 
+                                           "somehighschoool",
+                                           "completedhighschool", 
+                                           "somecollege", "completedcollege",
+                                           "someuniversity", 
+                                           "completeduniversity",
+                                           "mastersdegree", "phd")
+
+# income as factor
+covariates$total_income <- as.character(covariates$total_income)
+covariates$total_income <- as.factor(covariates$total_income)
+levels(covariates$total_income) <- c("10000-19999", "20000-29999", 
+                                     "30000-39999", "40000-49999", 
+                                     "500000-59999", "60000-79999", 
+                                     "80000-99999", "100000-149999",
+                                     "150000+", NA)
+
+##############################
+#Child birth chart (CBIRTHCD)#
+##############################
+
+# method of delivery as character
+covariates$mod <- as.character(covariates$mod)
+covariates$mod <- as.factor(covariates$mod)
+
+# create a mod of delivery iwth just vaginal/caesarean
+covariates$mod_cv <- covariates$mod
+
+# rename levesl of mod
+levels(covariates$mod) <- c("vaginal", "vaginal_forceps", "vaginal_vacuum",
+                            "elective_caesarean", "caesarean_labour", 
+                            "emergency_caesarean_labour",
+                            "emergency_caesarean_nolabour")
+
+# rename levels of mod_cv
+levels(covariates$mod_cv) <- c("vaginal", "vaginal", "vaginal",
+                               "caesarean", "caesarean", 
+                               "caesarean","caesarean")
+
+
+####################################
+#Home environment 3 months (HENV3M)#
+####################################
+
+# furry pets at 3 months as factor
+covariates$pets_3mos <- as.factor(covariates$pets_3mos)
+# pests or bugs at 3 months as factor
+covariates$pests_3mos <- as.factor(covariates$pests_3mos)
+# water leaks at 3 months as factor
+covariates$leaks_3mos <- as.factor(covariates$leaks_3mos)
+# visible mould at 3 months as factor
+covariates$mould_3mos <- as.factor(covariates$mould_3mos)
+# attached garage at 3 months as factor
+covariates$attached_garage_3mos <- as.factor(covariates$attached_garage_3mos)
+
+
+####################################
+#Home environment 6 months (HENV6M)#
+####################################
+
+# furry pets at 6 months as factor
+covariates$pets_6mos <- as.factor(covariates$pets_6mos)
+
+##################################
+#Home environment 1 year (HENV1Y)#
+##################################
+
+# furry pets at 1 year as factor
+covariates$pets_y1 <- as.factor(covariates$pets_y1)
+# pests or bugs at 1 year as factor
+covariates$pests_y1 <- as.factor(covariates$pests_y1)
+# water leaks at 1 year as factor
+covariates$leaks_y1 <- as.factor(covariates$leaks_y1)
+# visible mould at 1 year as factor
+covariates$mould_y1 <- as.factor(covariates$mould_y1)
+# attached garage at 1 year as factor
+covariates$attached_garage_y1 <- as.factor(covariates$attached_garage_y1)
+
+
+##################################
+#Maternal health 1 year (MHLTH1Y)#
+##################################
+
+# maternal smoking at year 1 as factor
+covariates$maternal_smoking_y1 <- as.factor(covariates$maternal_smoking_y1)
+
+
+################################
+#Child health 1 year(CHLTH1Y)#
+################################
+
+# child asthma diagnosis at 1 year (parent reported) as factor
+covariates$reported_asthma_dx_y1 <- as.factor(covariates$reported_asthma_dx_y1)
+# provincial vaccines at 6 months (reported at year 1) as factor
+covariates$prov_vaccines_6mos_y1 <- as.factor(covariates$prov_vaccines_6mos_y1)
+# provincial vaccines at 12 months (reported at year 1) as factor
+covariates$prov_vaccines_12mos_y1 <- as.factor(covariates$prov_vaccines_12mos_y1)
+# reported wheeze
+covariates$reported_wheezing_y1 <- as.factor(covariates$reported_wheezing_y1)
+# any wheezing meds past year?
+covariates$wheeze_meds_y1 <- as.factor(covariates$wheeze_meds_y1)
+
+
+##############################
+#Child health 1 year(CHCLA1Y)#
+##############################
+
+# clinician diagnosed wheeze
+covariates$clinician_wheeze_dx_y1 <- as.factor(covariates$clinician_wheeze_dx_y1)
+# clinician diagnsed atopy
+covariates$clinician_atopy_dx_y1 <- as.factor(covariates$clinician_atopy_dx_y1)
+
+############################################
+#Child health questionnaire 6 mos (CHLTH6)#
+############################################
+
+# provincial vaccines at 2 months (reported at 6 months) as factor
+covariates$prov_vaccines_2mos_6mos <- as.factor(covariates$prov_vaccines_2mos_6mos)
+# provincial vaccines at 4 months (reported at 6 months) as factor
+covariates$prov_vaccines_4mos_6mos <- as.factor(covariates$prov_vaccines_2mos_6mos)
+# provincial vaccines at 6 months (reported at 6 months) as factor
+covariates$prov_vaccines_6mos_6mos <- as.factor(covariates$prov_vaccines_6mos_6mos)
+# no provincial vaccines (reported at 6 months) as factor
+covariates$no_vaccines_6mos <- as.factor(covariates$no_vaccines_6mos)
+
+
+##############################################
+#Child health questionnaire 3 years (CHLTH3Y)#
+##############################################
+
+# child wheezing with or without cold as factor
+covariates$reported_wheeze_3y <- as.factor(covariates$reported_wheeze_3y)
+# child ever diagnosed with asthma at 3 years (maternal reported) as factor
+covariates$reported_asthma_dx_3y <- as.factor(covariates$reported_asthma_dx_3y)
+# bronchodilator use in last 6 months
+covariates$bronchodilator_use_3y <- as.factor(covariates$bronchodilator_use_3y)
+# steroid inhaler use in last 6 months
+covariates$csi_use_3y <- as.factor(covariates$csi_use_3y)
+
+
+####################################################
+#Child clinical health assessment 3 years (CHCLA3Y)#
+####################################################
+
+# physician diagnosed asthma at 3 years as factor
+covariates$clinician_asthma_dx_y3 <- as.factor(covariates$clinician_asthma_dx_y3)
+# wheeze reported in last 12 months
+covariates$wheeze_previous12mos_3y <- as.factor(covariates$wheeze_previous12mos_3y)
+#clinician reported wheeze
+covariates$clinician_wheeze_dx_y3 <- as.factor(covariates$clinician_wheeze_dx_y3)
+# clinician reported atopy
+covariates$clinican_atopy_dx_y3 <- as.factor(covariates$clinican_atopy_dx_y3)
+# clinician reported allergy
+covariates$clinician_allergy_dx_3y <- as.factor(covariates$clinician_allergy_dx_3y)
+
+
+##############################################
+#Child health questionnaire 5 years (CHLTH5Y)#
+##############################################
+
+# child ever diagnosed with asthma at 5 years (maternal reported) as factor
+covariates$reported_asthma_dx_5y <- as.factor(covariates$reported_asthma_dx_5y)
+# reported atopy
+covariates$reported_atopy_dx_5y <- as.factor(covariates$reported_atopy_dx_5y)
+# wheeze withor without cold
+covariates$reported_wheeze_5y <- as.factor(covariates$reported_wheeze_5y)
+# bronchodilator use over last year
+covariates$bronchodilator_use_5y <- as.factor(covariates$bronchodilator_use_5y)
+# corticosteroid inhaler use over last year
+covariates$csi_use_5y <- as.factor(covariates$csi_use_5y)
+
+
+####################################################
+#Child clinical health assessment 5 years (CHCLA5Y)#
+####################################################
+
+# physician diagnsed asthma at 5 years as factor
+covariates$clinician_asthma_dx_5y <- as.factor(covariates$clinician_asthma_dx_5y)
+# clinician diagnosed stopy 
+covariates$clinician_atopy_dx_5y <- as.factor(covariates$clinician_atopy_dx_5y)
+# clinician diagnosed allergy
+covariates$clinician_allergy_dx_5y <- as.factor(covariates$clinician_allergy_dx_5y)
+# wheeze without cold
+covariates$clinician_wheeze_wo_colds_5y <- as.factor(covariates$clinician_wheeze_wo_colds_5y)
+# wheeze with colds
+covariates$clinician_wheeze_w_colds_5y <- as.factor(covariates$clinician_wheeze_w_colds_5y)
+
+
+###############################################
+#Prenatal maternal health at 18 wk (PRNMH18WK)#
+###############################################
+
+# maternal asthma ever
+covariates$maternal_reported_asthma_dx_ever_18wk <- as.factor(covariates$maternal_reported_asthma_dx_ever_18wk)
+# maternal asthma diagnosis by doctor
+covariates$maternal_clinician_asthma_dx_ever_18wk <- as.factor(covariates$maternal_clinician_asthma_dx_ever_18wk)
+# current maternal smoking
+covariates$maternal_smoking_18wk <- as.factor(covariates$maternal_smoking_18wk)
+
+
+######################################
+#Prenatal home environment (HENV18WK)#
+######################################
+
+# furry pets in home at 18wks as factor
+covariates$pets_18wk <- as.factor(covariates$pets_18wk)
+# pests or bugs in home at 18wks as factor
+covariates$pests_18wk <- as.factor(covariates$pests_18wk)
+# visible mould in home at 18wks as factor
+covariates$mould_18wk <- as.factor(covariates$mould_18wk)
+# water leaks at 18wks as factor
+covariates$leaks_18wk <- as.factor(covariates$leaks_18wk)
+# attacked garage at 18wks as factor
+covariates$attached_garage_18wk <- as.factor(covariates$attached_garage_18wk)
+```
+
+
+Create composite/derived variables for SES, depression, stress, home environment variables(pets, pests, leaks, mould, attached garage), maternal smoking ever (prenatal period + year 1).
+```{r create_composite_vars}
+#######################################
+#maternal stress derived variables#
+#######################################
+
+# average of pss z-scores during prenatal period (18 wk and 36 wk)
+pss_18wk_z <- scale(covariates$pss_pre18wk, center = T, scale = T)
+pss_36wk_z <- scale(covariates$pss_pre36wk, center = T, scale = T)
+
+covariates$pss_prenatal <- rowMeans(data.frame(pss_18wk_z, pss_36wk_z))
+
+# average of pss z-scores during first year of life (6 mos and 12 mos)
+pss_6mos_z <- scale(covariates$pss_6m, center = T, scale = T)
+pss_12mos_z <- scale(covariates$pss_12m, center = T, scale = T)
+
+covariates$pss_y1 <- rowMeans(data.frame(pss_6mos_z, pss_12mos_z))
+
+
+#######################################
+#maternal depression derived variables#
+#######################################
+
+# average of csed z-scores during prenatal period (18 wk and 36 wk)
+csed_18wk_z <- scale(covariates$csed_pre18wk, center = T, scale = T)
+csed_36wk_z <- scale(covariates$csed_pre36wk, center = T, scale = T)
+
+covariates$csed_prenatal <- rowMeans(data.frame(csed_18wk_z, csed_36wk_z))
+
+# average of csed z-scores during first year of life (6 mos and 12 mos)
+csed_6mos_z <- scale(covariates$csed_6m, center = T, scale = T)
+csed_12mos_z <- scale(covariates$csed_12m, center = T, scale = T)
+
+covariates$csed_y1 <- rowMeans(data.frame(csed_6mos_z, csed_12mos_z))
+
+########################
+#SES composite variable#
+########################
+
+# average of ses variables (measured at 18 wk visit) 
+maternal_education_length_z <- scale(covariates$maternal_education_length, 
+                                     center = T, 
+                                     scale = T)
+
+paternal_education_length_z <- scale(covariates$paternal_education_length, 
+                                     center = T, 
+                                     scale = T)
+
+total_income_z <- scale(as.numeric(covariates$total_income), 
+                        center = T, 
+                        scale = T)
+
+ses_community_rank_z <- scale(covariates$ses_community_rank, 
+                              center = T, 
+                              scale = T)
+
+ses_canada_rank_z <- scale(covariates$ses_canada_rank, 
+                           center = T, 
+                           scale = T)
+
+covariates$composite_ses <- rowMeans(data.frame(maternal_education_length_z,
+                                                paternal_education_length_z,
+                                                total_income_z,
+                                                ses_community_rank_z,
+                                                ses_canada_rank_z))
+
+```
+
+Save covariate matrix to rdata for future use.
+```{r save_covariates}
+save(covariates, 
+     file=here("output_data", 
+               "covariates", 
+               "2023-06-28_CHILD_all_covariates.Rdata"))
+
+sesh <- sessionInfo()
+
+save(sesh,
+     file=here("output_data", 
+               "covariates", 
+               "2023-06-28_CHILD_all_covariates_session_info.Rdata"))
+```
